@@ -1,12 +1,12 @@
 # -- This file contains all functions that are required to properly calculate the trim position --
 import numpy as np
-
+import cmath
 
 def trim_aero(W, elbow, manus, alpha_0, aero_data):
     # use lift equation to solve for theta
     CL = get_lift(aero_data, elbow, manus, alpha_0)
     CD = get_drag(aero_data, elbow, manus, CL)
-    theta_0 = np.arctan(CD/CL)
+    theta_0 = np.arctan(-CD/CL)
     return theta_0
 
 
@@ -23,22 +23,32 @@ def solve_linsys(m, Iyy, rho, S_max, c_max, elbow, manus, alpha_0, U_0, theta_0,
     Iyy1 = 2*Iyy/(rho*U_0**2*S_max*c_max)
     w1 = m*9.81/(0.5*rho*U_0**2*S_max)
 
-    A = [[m1_inv * (-2 * CD), m1_inv * (CL - CD_alp), 0, m1_inv * (w1*np.cos(theta_0))],
+    A = [[m1_inv * (-2 * CD), m1_inv * (CL - CD_alp), 0, m1_inv * (-w1*np.cos(theta_0))],
          [m1_inv * (-2 * CL), m1_inv * (-CD - CL_alp), 1, m1_inv * (-w1*np.sin(theta_0))],
          [0, Cm_alp / Iyy1, 0, 0],
-         [0, 0, -1, 0]]
+         [0, 0, 1, 0]]
 
-    eig = np.linalg.eig(A)
-    damp = [0]*2
-    freq = [0]*2
-    if abs(eig[0][0].imag) > 0 and abs(eig[0][1].imag) > 0 and abs(eig[0][2].imag) > 0 and abs(eig[0][3].imag) > 0:
-        damp[0] = eig[0][0].real / np.sqrt(eig[0][0].real ** 2 + eig[0][0].imag ** 2)
-        damp[1] = eig[0][2].real / np.sqrt(eig[0][2].real ** 2 + eig[0][2].imag ** 2)
+    eig_val, eig_vec = np.linalg.eig(A)
+    damp = [0] * 2
+    freq = [0] * 2
+    mag = [0] * 16
+    phase = [0] * 16
 
-        freq[0] = np.sqrt(eig[0][0].real ** 2 + eig[0][0].imag ** 2)
-        freq[1] = np.sqrt(eig[0][2].real ** 2 + eig[0][2].imag ** 2)
+    if abs(eig_val[0].imag) > 0 and abs(eig_val[1].imag) > 0 and abs(eig_val[2].imag) > 0 and abs(eig_val[3].imag) > 0:
+        damp[0] = - eig_val[0].real / np.sqrt(eig_val[0].real ** 2 + eig_val[0].imag ** 2)
+        damp[1] = - eig_val[2].real / np.sqrt(eig_val[2].real ** 2 + eig_val[2].imag ** 2)
 
-    return damp, freq
+        freq[0] = np.sqrt(eig_val[0].real ** 2 + eig_val[0].imag ** 2)
+        freq[1] = np.sqrt(eig_val[2].real ** 2 + eig_val[2].imag ** 2)
+
+        count = 0
+        for it1 in range(0, 4, 1):
+            for it2 in range(0, 4, 1):
+                mag[count] = cmath.phase(eig_vec[it2, it1])
+                phase[count] = abs(eig_vec[it2, it1])
+                count = count + 1
+
+    return damp, freq, eig_val, mag, phase
 
 
 def get_lift(aero_data, elbow, manus, alpha_0):

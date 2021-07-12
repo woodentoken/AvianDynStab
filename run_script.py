@@ -10,7 +10,7 @@ from datetime import date
 # -------- Generic run script -------
 rho = 1.225
 m = 1.0154
-W = m*9.81
+W = m * 9.81
 S_max = 0.1074285
 c_max = 0.2861011
 coef_data = pd.read_csv('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3 - DynamicStability'
@@ -19,6 +19,12 @@ a_test = [-2, 0, 2, 4, 6]
 U_test = [10, 15, 20, 25]
 elbow_test = np.arange(80, 155, 5)
 manus_test = np.arange(100, 170, 5)
+
+with open('LongDynStability_Rigid.csv', 'w', newline='') as res_file:
+    writer = csv.writer(res_file)
+    writer.writerow(['date', 'alpha', 'U0', 'elbow', 'manus', 'Iyy', 'theta0', 'eignum', 'zeta', 'omega_n',
+              'eig_real', 'eig_imag', 'mag1', 'mag2', 'mag3', 'mag4',
+              'phase1', 'phase2', 'phase3', 'phase4'])
 
 for i in a_test:
     for j in U_test:
@@ -40,11 +46,29 @@ for i in a_test:
                 theta_0 = aerofn.trim_aero(W, elbow, manus, alpha_0, coef_data)
 
                 # Step 2: Solve the eigen problem
-                damp,freq = aerofn.solve_linsys(m, Iyy, rho, S_max, c_max, elbow, manus, alpha_0, U_0, theta_0, coef_data)
+                damp, freq, eig_val, mag, phase = aerofn.solve_linsys(m, Iyy, rho, S_max, c_max, elbow, manus,
+                                                                      alpha_0, U_0, theta_0, coef_data)
 
                 today = date.today()
                 date_adj = today.strftime("%Y_%m_%d")
 
                 with open('LongDynStability_Rigid.csv', 'a', newline="") as res_file:
+
+
                     writer = csv.writer(res_file)
-                    writer.writerow([date_adj, i, j, e, w, Iyy, theta_0, damp[0], damp[1], freq[0], freq[1]])
+                    eignum = 1
+                    writer.writerow([date_adj, i, j, e, w, Iyy, theta_0, eignum, damp[0], freq[0],
+                                     eig_val[0].real, eig_val[0].imag, mag[0], mag[1], mag[2], mag[3],
+                                     phase[0], phase[1], phase[2], phase[3]])
+                    eignum = 2
+                    writer.writerow([date_adj, i, j, e, w, Iyy, theta_0, eignum, damp[0], freq[0],
+                                     eig_val[1].real, eig_val[1].imag, mag[4], mag[5], mag[6], mag[7],
+                                     phase[4], phase[5], phase[6], phase[7]])
+                    eignum = 3
+                    writer.writerow([date_adj, i, j, e, w, Iyy, theta_0, eignum, damp[1], freq[1],
+                                     eig_val[2].real, eig_val[2].imag, mag[8], mag[9], mag[10], mag[11],
+                                     phase[8], phase[9], phase[10], phase[11]])
+                    eignum = 4
+                    writer.writerow([date_adj, i, j, e, w, Iyy, theta_0, eignum, damp[1], freq[1],
+                                     eig_val[3].real, eig_val[3].imag, mag[12], mag[13], mag[14], mag[15],
+                                     phase[12], phase[13], phase[14], phase[15]])
