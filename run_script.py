@@ -13,8 +13,8 @@ m = 1.0154
 W = m * 9.81
 S_max = 0.1074285
 c_max = 0.2861011
-coef_data = pd.read_csv('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3 - DynamicStability'
-                        '/2021_07_12_coefficients.csv')
+coef_data = pd.read_csv('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability'
+                        '/2021_07_13_coefficients.csv')
 a_test = [-2, 0, 2, 4, 6]
 U_test = [10, 15, 20, 25]
 elbow_test = np.arange(80, 155, 5)
@@ -53,7 +53,6 @@ for i in a_test:
                 date_adj = today.strftime("%Y_%m_%d")
 
                 with open('LongDynStability_Rigid.csv', 'a', newline="") as res_file:
-
 
                     writer = csv.writer(res_file)
                     eignum = 1
