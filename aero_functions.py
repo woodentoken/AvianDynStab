@@ -1,8 +1,9 @@
 # -- This file contains all functions that are required to properly calculate the trim position --
 import numpy as np
+import scipy.optimize as opt
 
 
-def trim_aero(W, rho, S, elbow, manus, alpha_0, aero_data):
+def trim_aero(W, rho, S, c_root, elbow, manus, alpha_0, aero_data):
     U_0 = 0
     # use lift equation to solve for theta
     CL = get_CL(aero_data, elbow, manus, alpha_0)
@@ -14,8 +15,15 @@ def trim_aero(W, rho, S, elbow, manus, alpha_0, aero_data):
     # calculate the necessary speed for trim
     if CL > 0:
         U_0 = np.sqrt(2*W*np.cos(theta_0)/(rho*S*CL))
-
-    return theta_0, U_0
+    alpha_rad = np.deg2rad(alpha_0)
+    # calculate the minimum sweep and dihedral angle necessary to balance out the pitching moment
+    Cm = get_Cm(aero_data, elbow, manus, CL)
+    x0 = [0]
+    test1 = opt.minimize(min_geo_angle, x0, args=(Cm, CL, CD, alpha_rad, c_root))
+    del_x = test1.x[0]
+    del_z = (c_root / (CL * np.sin(alpha_rad) - CD * np.cos(alpha_rad))) * (
+                Cm - (CL * np.cos(alpha_rad) + CD * np.sin(alpha_rad)) * (del_x / c_root))
+    return theta_0, U_0, del_x, del_z
 
 
 def get_CL(aero_data, elbow, manus, alpha_0):
@@ -63,6 +71,19 @@ def get_dCD_dalp(aero_data, elbow, manus, CL, CL_alp):
     return CD_alp
 
 
+def get_Cm(aero_data, elbow, manus, CL):
+    Cm = aero_data['elbow'][3]*elbow + aero_data['manus'][3]*manus + \
+         aero_data['elbow2'][3]*elbow**2 + aero_data['manus2'][3]*manus**2 + \
+         aero_data['elbow3'][3]*elbow**3 + aero_data['manus3'][3]*manus**3 + \
+         aero_data['elbowmanus'][3]*elbow*manus + aero_data['intercept'][3] + \
+         aero_data['CL'][3]*CL + aero_data['CL2'][3]*CL**2 + \
+         aero_data['CL3'][3]*CL**3 + aero_data['elbowCL'][3]*elbow*CL + \
+         aero_data['manusCL'][3]*manus*CL + aero_data['elbowmanusCL'][3]*elbow*manus*CL
+
+    # output will be in radians
+    return Cm
+
+
 def get_dCm_dalp(aero_data, elbow, manus, CL_alp):
     cmcl = aero_data['elbow'][1] * elbow + aero_data['manus'][1] * manus + \
            aero_data['elbow2'][1] * elbow ** 2 + aero_data['manus2'][1] * manus ** 2 + \
@@ -86,3 +107,11 @@ def get_dCm_dq(aero_data, elbow, manus):
            aero_data['elbowmanus'][6] * elbow * manus + aero_data['intercept'][6]
     # output will be in radians
     return Cm_q
+
+
+def min_geo_angle(x, Cm, CL, CD, alpha, c_root):
+
+    z = (c_root/(CL*np.sin(alpha)-CD*np.cos(alpha)))*(Cm - ((CL*np.cos(alpha)+CD*np.sin(alpha))*(x/c_root)))
+    out = x**2 + z**2
+
+    return out

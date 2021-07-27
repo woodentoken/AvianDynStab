@@ -36,6 +36,7 @@ colnames(coef_all) <- c("y.model","intercept","elbow","manus","elbow2","manus2",
 ## ---------------------------------------------
 ## ------------- Inertia Data ------------------
 ## ---------------------------------------------
+#  !! CAUTION: INCLUDE NOTE IN PAPER THAT I EFFECTIVELY AM EXTRAPOLATING THE INERTIAL RESULS INTO HIGHER ELBOW AND WRIST ANGLES
 
 # subset to the same range as used in the aerodynamic data
 dat_inertial = subset(dat_final,species == "lar_gla" & elbow > 80 & manus > 100)

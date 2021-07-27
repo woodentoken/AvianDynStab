@@ -5,7 +5,8 @@ import csv
 import aero_functions as aerofn
 from scipy.integrate import odeint
 
-def solve_linsys(m, Iyy, rho, S_max, c_max, elbow, manus, alpha_0, U_0, theta_0, aero_data):
+
+def solve_linsys(m, Iyy, rho, S_max, c_max, elbow, manus, alpha_0, U_0, theta_0, aero_data, del_x, del_z):
 
     CL = aerofn.get_CL(aero_data, elbow, manus, alpha_0)
     CD = aerofn.get_CD(aero_data, elbow, manus, CL)
@@ -59,22 +60,22 @@ def solve_linsys(m, Iyy, rho, S_max, c_max, elbow, manus, alpha_0, U_0, theta_0,
         writer.writerow([date_adj, alpha_0, U_0, elbow, manus, Iyy, theta_0, eignum, damp[0], freq[0],
                          eig_val[0].real, eig_val[0].imag, mag[0], mag[1], mag[2], mag[3],
                          phase[0], phase[1], phase[2], phase[3],
-                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q])
+                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, del_x, del_z])
         eignum = 2
         writer.writerow([date_adj, alpha_0, U_0, elbow, manus, Iyy, theta_0, eignum, damp[0], freq[0],
                          eig_val[1].real, eig_val[1].imag, mag[4], mag[5], mag[6], mag[7],
                          phase[4], phase[5], phase[6], phase[7],
-                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q])
+                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, del_x, del_z])
         eignum = 3
         writer.writerow([date_adj, alpha_0, U_0, elbow, manus, Iyy, theta_0, eignum, damp[1], freq[1],
                          eig_val[2].real, eig_val[2].imag, mag[8], mag[9], mag[10], mag[11],
                          phase[8], phase[9], phase[10], phase[11],
-                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q])
+                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, del_x, del_z])
         eignum = 4
         writer.writerow([date_adj, alpha_0, U_0, elbow, manus, Iyy, theta_0, eignum, damp[1], freq[1],
                          eig_val[3].real, eig_val[3].imag, mag[12], mag[13], mag[14], mag[15],
                          phase[12], phase[13], phase[14], phase[15],
-                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q])
+                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, del_x, del_z])
 
     return A
 
