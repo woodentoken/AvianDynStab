@@ -16,9 +16,7 @@ def solve_linsys(m, Iyy, rho, S_max, c_max, elbow, manus, alpha_0, U_0, theta_0,
     Cm_alp = aerofn.get_dCm_dalp(aero_data, elbow, manus, CL_alp)
 
     CL_q = aerofn.get_dCL_dq(aero_data, elbow, manus)
-    # the adjusted R^2 from this fit is 0.48...
-    # Cm_q = get_dCm_dq(aero_data, elbow, manus)
-    Cm_q = (Cm_alp/CL_alp)*CL_q
+    Cm_q = aerofn.get_dCm_dq(aero_data, elbow, manus)
 
     m1_inv = 1/(2*m/(rho*U_0*S_max))
     Iyy1 = 2*Iyy/(rho*(U_0**2)*S_max*c_max)

@@ -10,13 +10,13 @@ from datetime import date
 
 # -------- Generic run script -------
 rho = 1.225
-# taken from the bird body specimen tested in AvInertia - chord was scaled
-m = 1.0154
-W = m * 9.81
-S_max = 0.1074285
-c_max = 0.2861011
+# taken from the bird body specimen tested in AvInertia - chord was scaled to match this bird
+m = 1.0154  # mass (kg)
+W = m * 9.81  # weight (N)
+S_max = 0.244657  # wings and body reference area
+c_max = 0.2861011  # wing root chord
 coef_data = pd.read_csv('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability'
-                        '/2021_07_25_coefficients.csv')
+                        '/2021_07_29_coefficients.csv')
 a_test = [-2, 0, 2, 4, 6]
 elbow_test = np.arange(80, 170, 5)
 manus_test = np.arange(100, 185, 5)
@@ -53,7 +53,7 @@ for i in a_test:
                                    theta_0, coef_data, del_x, del_z)
 
             # Step 3: Extract the time response of the system
-            x0 = [0, 1*np.pi/180, 0, 0]
+            x0 = [0, 5*np.pi/180, 0, 0]
             t = np.linspace(0, 60, 5000)
             x = dynfn.solve_IVP(A, x0, t)
 
