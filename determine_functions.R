@@ -25,13 +25,14 @@ dat_num$root_c_max[which(dat_num$WingID == "17_0285")] = max(dat_num$root_c[whic
 dat_num$root_c_max[which(dat_num$WingID == "17_0243")] = max(dat_num$root_c[which(dat_num$WingID == "17_0243")])
 dat_num$root_c_max[which(dat_num$WingID == "16_0048")] = max(dat_num$root_c[which(dat_num$WingID == "16_0048")])
 
-coef_all = as.data.frame(matrix(0,nrow = 7, ncol = 22))
+coef_all = as.data.frame(matrix(0,nrow = 7, ncol = 24))
 colnames(coef_all) <- c("y.model","intercept","elbow","manus","elbow2","manus2",
                         "elbow3","manus3","elbowmanus",
                         "alpha","alpha2","alpha3",
                         "elbowalpha","manusalpha","elbowmanusalpha",
                         "CL","CL2","CL3",
-                        "elbowCL","manusCL","elbowmanusCL")
+                        "elbowCL","manusCL","elbowmanusCL",
+                        "elbowCL2","manusCL2")
 
 ## ---------------------------------------------
 ## ------------- Inertia Data ------------------
@@ -41,10 +42,10 @@ colnames(coef_all) <- c("y.model","intercept","elbow","manus","elbow2","manus2",
 # subset to the same range as used in the aerodynamic data
 dat_inertial = subset(dat_final,species == "lar_gla" & elbow > 80 & manus > 100)
 remove(dat_final)
-
-max(dat_inertial$S_max)
-max(dat_inertial$c_max) # can grab the root one if necessary
-max(dat_inertial$b_max)
+# need this to be two wings + full body area
+2*max(dat_inertial$S_max) + 0.0298 # body area was determined by dividing 0.4/0.41*(0.0305) that number is taken from 3 different wings test .dist outputs from MachUpX
+max(dat_inertial$c_max) # root chord approximation - calculated in the same manner as above in processdata.R
+max(dat_inertial$b_max) # of full wing
 max(dat_inertial$full_m)
 mod_inertia <- lm(full_Iyy ~ elbow*manus + I(elbow^2) + I(elbow^3) +
                     I(manus^2)+ I(manus^3), dat_inertial)
@@ -74,21 +75,26 @@ mod_zcg <- lm(full_CGz ~ elbow*manus + I(elbow^2) + I(elbow^3) +
 # need to divide each coefficient by however many inputs are being changed
 
 # ------ CD data ------
-# need to fit to experimental data due to the reduced
-dat_exp$D_true     <- dat_exp$D_comp/(0.5*max(dat_num$S[which(dat_num$WingID == "17_0285")]))
+# need to fit to experimental data due to the reduced - following same adjustment as the lift in analyse_exp.R
+dat_exp$CD_true     <- dat_exp$D_comp/(0.5*max(dat_num$S[which(dat_num$WingID == "17_0285")]))
 
 # minor changes in the coefficients between speeds, will group them
 # interactive terms were non-significant leave them out
-mod_CD <- lm(D_true ~ elbow + manus + L_comp + I(L_comp^2) + I(elbow^2) + I(manus^2), data = subset(dat_exp, alpha > -5 & alpha < 5))
+mod_CD <- lm(CD_true ~ elbow + manus + L_comp + I(L_comp^2) + I(L_comp^3) + 
+               elbow:I(L_comp^2) + manus:I(L_comp^2) + 
+               elbow:L_comp + manus:L_comp, data = dat_exp)
 
 coef_all$y.model[5]    = "CD"
 coef_all$intercept[5]  = coef(mod_CD)["(Intercept)"]
 coef_all$elbow[5]      = coef(mod_CD)["elbow"]
 coef_all$manus[5]      = coef(mod_CD)["manus"]
-coef_all$elbow2[5]     = coef(mod_CD)["I(elbow^2)"]
-coef_all$manus2[5]     = coef(mod_CD)["I(manus^2)"]
 coef_all$CL[5]         = coef(mod_CD)["L_comp"]
 coef_all$CL2[5]        = coef(mod_CD)["I(L_comp^2)"]
+coef_all$CL3[5]        = coef(mod_CD)["I(L_comp^3)"]
+coef_all$elbowCL[5]      = coef(mod_CD)["elbow:L_comp"]
+coef_all$manusCL[5]      = coef(mod_CD)["manus:L_comp"]
+coef_all$elbowCL2[5]      = coef(mod_CD)["elbow:I(L_comp^2)"]
+coef_all$manusCL2[5]      = coef(mod_CD)["manus:I(L_comp^2)"]
 
 # ------ CL data ------
 mod_CL <- lmer(CL_adj ~ elbow_scale*manus_scale*alpha_scale + I(alpha_scale^2) + I(alpha_scale^3) + 
@@ -193,14 +199,13 @@ coef_all$manus2[2]     = summary(mod_cmcl)$coefficients["I(manus_scale^2)","Esti
 coef_all$manus3[2]     = summary(mod_cmcl)$coefficients["I(manus_scale^3)","Estimate"]/(1000^3)
 coef_all$elbowmanus[2] = summary(mod_cmcl)$coefficients["elbow_scale:manus_scale","Estimate"]/(1000^2)
 
-# to show that the speed is not a significant effect on the model prediction
-mod_CD_check <- lm(D_true ~ elbow*manus + L_comp + I(L_comp^2) + I(elbow^2) + I(manus^2) + U_des, data = subset(dat_exp, alpha > -5 & alpha < 5))
+# to show that the speed is not a significant effect on the model prediction - can verify from the two speeds tested in tunnel
+mod_CD_check <- lm(CD_true ~ elbow*manus + L_comp + I(L_comp^2) + I(elbow^2) + I(manus^2) + U_des, data = subset(dat_exp, alpha > -5 & alpha < 5))
 mod_Cm_check <- lm(m_comp ~ elbow*manus + L_comp + I(L_comp^2) + I(elbow^2) + I(manus^2) + U_des, data = subset(dat_exp, alpha > -5 & alpha < 5))
 mod_CL_check <- lm(L_comp ~ elbow*manus + alpha + I(alpha^2) + I(elbow^2) + I(manus^2) + U_des, data = subset(dat_exp, alpha > -5 & alpha < 5))
 
 ## ----------------- Pitch rate derivatives ------------------
 # CLq 
-
 dat_q$xcg = predict(mod_xcg,dat_q)
 dat_q$zcg = predict(mod_zcg,dat_q)
 dat_q$CL_adj = dat_q$FL/(0.5*1.225*10^2*max(dat_num$S[which(dat_num$WingID == "17_0285")]))
@@ -210,34 +215,64 @@ dat_q$CD_adj_exp = predict(mod_CD,dat_q)
 dat_q$D_adj_exp = (0.5*1.225*10^2*max(dat_num$S[which(dat_num$WingID == "17_0285")]))*dat_q$CD_adj_exp
 
 # adjust the pitching moment be about the true center of gravity
-dat_q$M_CG = dat_q$Mm + ((dat_q$FL*cosd(dat_q$alpha)+dat_q$D_adj_exp*sind(dat_q$alpha))*(-dat_q$xcg) - 
+dat_q$M_CG = dat_q$Mm + ((dat_q$FL*cosd(dat_q$alpha)+dat_q$D_adj_exp*sind(dat_q$alpha))*(-dat_q$xcg) + 
                      (dat_q$FL*sind(dat_q$alpha)-dat_q$D_adj_exp*cosd(dat_q$alpha))*(-dat_q$zcg))
 
 # Note this pitching moment is defined relative to the root chord
 dat_q$Cm_CG <- dat_q$M_CG/(0.5*1.225*10^2*max(dat_num$S[which(dat_num$WingID == "17_0285")])*max(dat_num$root_c_max[which(dat_num$WingID == "17_0285")]))
 
-# Don't use too many parameters because there is not enough data to justify that
-mod_CL_q <- lm(CL_adj ~ q*elbow*manus + alpha, dat_q)
+dat_q_ind = as.data.frame(matrix(NA,nrow=61,ncol=8))
+names(dat_q_ind) = c("species","WingID","TestID","FrameID","elbow","manus","CL_q","Cm_q")
+count = 1
+
+for (i in 1:length(unique(dat_q$FrameID))){
+  curr_dat1 = subset(dat_q, FrameID == unique(dat_q$FrameID)[i])
+  
+  for(j in 1:length(unique(curr_dat1$alpha))){
+    curr_dat = subset(dat_q, FrameID == unique(dat_q$FrameID)[i] & alpha == unique(curr_dat1$alpha)[j])
+    if(nrow(curr_dat) < 4){next
+      count = count + 1}
+    mod_CL_q <- lm(CL_adj ~ q, data = curr_dat)
+    mod_Cm_q <- lm(Cm_CG ~ q, data = curr_dat)
+    
+    dat_q_ind$species[count] <- as.character(curr_dat$species[1])
+    dat_q_ind$WingID[count]  <- curr_dat$WingID[1]
+    dat_q_ind$TestID[count]  <- curr_dat$TestID[1]
+    dat_q_ind$FrameID[count] <- curr_dat$FrameID[1]
+    dat_q_ind$alpha[count]   <- unique(curr_dat1$alpha)[j]
+    dat_q_ind$elbow[count]   <- curr_dat$elbow[1]
+    dat_q_ind$manus[count]   <- curr_dat$manus[1]
+    
+    dat_q_ind$CL_q[count]    <- coefficients(mod_CL_q)["q"]
+    dat_q_ind$Cm_q[count]    <- coefficients(mod_Cm_q)["q"]
+    dat_q_ind$CL_q_R2[count]    <- summary(mod_CL_q)$r.squared
+    dat_q_ind$Cm_q_R2[count]    <- summary(mod_Cm_q)$r.squared
+    dat_q_ind$no_sample[count]    <- nrow(curr_dat)
+    count = count + 1
+  }
+}
+
+
+mod_CL_q_ind <- lm(CL_q ~ elbow*manus + I(elbow^2) + I(manus^2), data = dat_q_ind)
 
 coef_all$y.model[6]    = "dCLdq"
-coef_all$intercept[6]  = coef(mod_CL_q)["q"]
-coef_all$elbow[6]      = coef(mod_CL_q)["q:elbow"]
-coef_all$manus[6]      = coef(mod_CL_q)["q:manus"]
-coef_all$elbowmanus[6] = coef(mod_CL_q)["q:elbow:manus"]
+coef_all$intercept[6]  = coef(mod_CL_q_ind)["(Intercept)"]
+coef_all$elbow[6]      = coef(mod_CL_q_ind)["elbow"]
+coef_all$manus[6]      = coef(mod_CL_q_ind)["manus"]
+coef_all$elbowmanus[6] = coef(mod_CL_q_ind)["elbow:manus"]
+coef_all$elbow2[6]      = coef(mod_CL_q_ind)["I(elbow^2)"]
+coef_all$manus2[6]      = coef(mod_CL_q_ind)["I(manus^2)"]
 
-# Don't use too many parameters because there is not enough data to justify that... due to bad fit will predict from CLq?
-mod_Cm_q <- lm(Cm_CG ~ q*elbow*manus + alpha, dat_q)
+
+mod_Cm_q_ind <- lm(Cm_q ~ elbow*manus + I(elbow^2) + I(manus^2), data = dat_q_ind)
 
 coef_all$y.model[7]    = "dCmdq"
-coef_all$intercept[7]  = coef(mod_Cm_q)["q"]
-coef_all$elbow[7]      = coef(mod_Cm_q)["q:elbow"]
-coef_all$manus[7]      = coef(mod_Cm_q)["q:manus"]
-coef_all$elbowmanus[7] = coef(mod_Cm_q)["q:elbow:manus"]
+coef_all$intercept[7]  = coef(mod_Cm_q_ind)["(Intercept)"]
+coef_all$elbow[7]      = coef(mod_Cm_q_ind)["elbow"]
+coef_all$manus[7]      = coef(mod_Cm_q_ind)["manus"]
+coef_all$elbowmanus[7] = coef(mod_Cm_q_ind)["elbow:manus"]
+coef_all$elbow2[7]      = coef(mod_Cm_q_ind)["I(elbow^2)"]
+coef_all$manus2[7]      = coef(mod_Cm_q_ind)["I(manus^2)"]
 
-
-### ---------- adjust all alpha related derivatives to be radian rather than degrees --------
-coef_all$alpha = coef_all$alpha
-
-
-write.csv(coef_all,'/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/2021_07_25_coefficients.csv')
+write.csv(coef_all,'/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/2021_07_29_coefficients.csv')
 
