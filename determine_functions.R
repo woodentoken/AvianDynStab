@@ -42,11 +42,15 @@ colnames(coef_all) <- c("y.model","intercept","elbow","manus","elbow2","manus2",
 # subset to the same range as used in the aerodynamic data
 dat_inertial = subset(dat_final,species == "lar_gla" & elbow > 80 & manus > 100)
 remove(dat_final)
+
+#----- Hard-coded inputs into Python --------
+max(dat_inertial$full_m)
 # need this to be two wings + full body area
 2*max(dat_inertial$S_max) + 0.0298 # body area was determined by dividing 0.4/0.41*(0.0305) that number is taken from 3 different wings test .dist outputs from MachUpX
 max(dat_inertial$c_max) # root chord approximation - calculated in the same manner as above in processdata.R
-max(dat_inertial$b_max) # of full wing
-max(dat_inertial$full_m)
+
+# ------ Fit model to Iyy --------
+
 mod_inertia <- lm(full_Iyy ~ elbow*manus + I(elbow^2) + I(elbow^3) +
                     I(manus^2)+ I(manus^3), dat_inertial)
 
@@ -60,6 +64,8 @@ coef_all$manus2[1]     = coef(mod_inertia)["I(manus^2)"]
 coef_all$manus3[1]     = coef(mod_inertia)["I(manus^3)"]
 coef_all$elbowmanus[1] = coef(mod_inertia)["elbow:manus"]
 
+
+# ------ Fit model to CG --------
 ## need to fit model to the full_CGx to allow Cm to be adjusted appropriately.
 mod_xcg <- lm(full_CGx ~ elbow*manus + I(elbow^2) + I(elbow^3) +
                 I(manus^2)+ I(manus^3), dat_inertial)
