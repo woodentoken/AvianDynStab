@@ -37,10 +37,7 @@ for i in a_test:
             # Step 2: Set morphological data
             elbow = e
             manus = w
-            Iyy = coef_data['elbow'][0] * elbow + coef_data['manus'][0] * manus + \
-                  coef_data['elbow2'][0] * elbow ** 2 + coef_data['manus2'][0] * manus ** 2 + \
-                  coef_data['elbow3'][0] * elbow ** 3 + coef_data['manus3'][0] * manus ** 3 + \
-                  coef_data['elbowmanus'][0] * elbow * manus + coef_data['intercept'][0]
+            Iyy = dynfn.get_Iyy(elbow, manus, coef_data)
 
             # Step 1: Calculate the trim flight path angle and speed for steady gliding flight
             theta_0, U_0, del_x, del_z = aerofn.trim_aero(W, rho, S_max, c_max, elbow, manus, alpha_0, coef_data)

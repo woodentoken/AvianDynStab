@@ -28,11 +28,11 @@ def trim_aero(W, rho, S, c_root, elbow, manus, alpha_0, aero_data):
 
 def get_CL(aero_data, elbow, manus, alpha_0):
     CL = aero_data['elbow'][2]*elbow + aero_data['manus'][2]*manus + \
-         aero_data['elbow2'][2]*elbow**2 + aero_data['manus2'][2]*manus**2 + \
-         aero_data['elbow3'][2]*elbow**3 + aero_data['manus3'][2]*manus**3 + \
+         aero_data['elbow2'][2]*(elbow**2) + aero_data['manus2'][2]*(manus**2) + \
+         aero_data['elbow3'][2]*(elbow**3) + aero_data['manus3'][2]*(manus**3) + \
          aero_data['elbowmanus'][2]*elbow*manus + aero_data['intercept'][2] + \
-         aero_data['alpha'][2]*alpha_0 + aero_data['alpha2'][2]*alpha_0**2 + \
-         aero_data['alpha3'][2]*alpha_0**3 + aero_data['elbowalpha'][2]*elbow*alpha_0 + \
+         aero_data['alpha'][2]*alpha_0 + aero_data['alpha2'][2]*(alpha_0**2) + \
+         aero_data['alpha3'][2]*(alpha_0**3) + aero_data['elbowalpha'][2]*elbow*alpha_0 + \
          aero_data['manusalpha'][2]*manus*alpha_0 + aero_data['elbowmanusalpha'][2]*elbow*manus*alpha_0
 
     return CL
@@ -40,7 +40,7 @@ def get_CL(aero_data, elbow, manus, alpha_0):
 
 def get_dCL_dalp(aero_data, elbow, manus, alpha_0):
     CL_alp = aero_data['alpha'][2] + 2 * aero_data['alpha2'][2] * alpha_0 + \
-             3 * aero_data['alpha3'][2] * alpha_0 ** 2 + aero_data['elbowalpha'][2] * elbow + \
+             3 * aero_data['alpha3'][2] * (alpha_0 ** 2) + aero_data['elbowalpha'][2] * elbow + \
              aero_data['manusalpha'][2] * manus + aero_data['elbowmanusalpha'][2] * elbow * manus
 
     # CAUTION THE INPUT ANGLE OF ATTACK IS IN DEGREES
@@ -52,16 +52,16 @@ def get_dCL_dalp(aero_data, elbow, manus, alpha_0):
 def get_CD(aero_data, elbow, manus, CL):
     CD = aero_data['elbow'][4]*elbow + aero_data['manus'][4]*manus + \
          aero_data['intercept'][4] + aero_data['CL'][4]*CL + \
-         aero_data['CL2'][4]*CL**2 + aero_data['CL3'][4]*CL**3 + \
+         aero_data['CL2'][4]*(CL**2) + aero_data['CL3'][4]*(CL**3) + \
          aero_data['elbowCL'][4]*elbow*CL + aero_data['manusCL'][4]*manus*CL + \
-         aero_data['elbowCL2'][4] * elbow * CL**2 + aero_data['manusCL2'][4] * manus * CL**2
+         aero_data['elbowCL2'][4] * elbow * (CL**2) + aero_data['manusCL2'][4] * manus * (CL**2)
 
     return CD
 
 
 def get_dCD_dalp(aero_data, elbow, manus, CL, CL_alp):
     cdcl = aero_data['CL'][4] + 2 * aero_data['CL2'][4] * CL + \
-           3 * aero_data['CL3'][4] * CL ** 2 + aero_data['elbowCL'][4] * elbow + \
+           3 * aero_data['CL3'][4] * (CL ** 2) + aero_data['elbowCL'][4] * elbow + \
            aero_data['manusCL'][4] * manus + aero_data['elbowmanusCL'][4] * elbow * manus + \
            2*aero_data['elbowCL2'][4] * elbow * CL + 2*aero_data['manusCL2'][4] * manus * CL
 
@@ -72,11 +72,11 @@ def get_dCD_dalp(aero_data, elbow, manus, CL, CL_alp):
 
 def get_Cm(aero_data, elbow, manus, CL):
     Cm = aero_data['elbow'][3]*elbow + aero_data['manus'][3]*manus + \
-         aero_data['elbow2'][3]*elbow**2 + aero_data['manus2'][3]*manus**2 + \
-         aero_data['elbow3'][3]*elbow**3 + aero_data['manus3'][3]*manus**3 + \
+         aero_data['elbow2'][3]*(elbow**2) + aero_data['manus2'][3]*(manus**2) + \
+         aero_data['elbow3'][3]*(elbow**3) + aero_data['manus3'][3]*(manus**3) + \
          aero_data['elbowmanus'][3]*elbow*manus + aero_data['intercept'][3] + \
-         aero_data['CL'][3]*CL + aero_data['CL2'][3]*CL**2 + \
-         aero_data['CL3'][3]*CL**3 + aero_data['elbowCL'][3]*elbow*CL + \
+         aero_data['CL'][3]*CL + aero_data['CL2'][3]*(CL**2) + \
+         aero_data['CL3'][3]*(CL**3) + aero_data['elbowCL'][3]*elbow*CL + \
          aero_data['manusCL'][3]*manus*CL + aero_data['elbowmanusCL'][3]*elbow*manus*CL
 
     # output will be in radians
@@ -85,8 +85,8 @@ def get_Cm(aero_data, elbow, manus, CL):
 
 def get_dCm_dalp(aero_data, elbow, manus, CL_alp):
     cmcl = aero_data['elbow'][1] * elbow + aero_data['manus'][1] * manus + \
-           aero_data['elbow2'][1] * elbow ** 2 + aero_data['manus2'][1] * manus ** 2 + \
-           aero_data['elbow3'][1] * elbow ** 3 + aero_data['manus3'][1]*manus**3 +  \
+           aero_data['elbow2'][1] * (elbow ** 2) + aero_data['manus2'][1] * (manus ** 2) + \
+           aero_data['elbow3'][1] * (elbow ** 3) + aero_data['manus3'][1] * (manus**3) +  \
            aero_data['elbowmanus'][1] * elbow * manus + aero_data['intercept'][1]
 
     Cm_alp = cmcl * CL_alp
@@ -97,7 +97,6 @@ def get_dCm_dalp(aero_data, elbow, manus, CL_alp):
 def get_dCL_dq(aero_data, elbow, manus):
     CL_q = aero_data['elbow'][5]*elbow + aero_data['manus'][5]*manus + \
            aero_data['elbow2'][5] * elbow ** 2 + aero_data['manus2'][5] * manus ** 2 + \
-           aero_data['elbow3'][5] * elbow ** 3 + aero_data['manus3'][5]*manus**3 +  \
            aero_data['elbowmanus'][5] * elbow * manus + aero_data['intercept'][5]
     # output will be in radians
     return CL_q
@@ -106,7 +105,6 @@ def get_dCL_dq(aero_data, elbow, manus):
 def get_dCm_dq(aero_data, elbow, manus):
     Cm_q = aero_data['elbow'][6]*elbow + aero_data['manus'][6]*manus + \
            aero_data['elbow2'][6] * elbow ** 2 + aero_data['manus2'][6] * manus ** 2 + \
-           aero_data['elbow3'][6] * elbow ** 3 + aero_data['manus3'][6] * manus ** 3 + \
            aero_data['elbowmanus'][6] * elbow * manus + aero_data['intercept'][6]
     # output will be in radians
     return Cm_q
