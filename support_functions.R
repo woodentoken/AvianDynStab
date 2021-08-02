@@ -22,3 +22,55 @@ cut_trueshape <- function(dat,dat_geom,col_elbow,col_manus){
   dat_return$vertices <- vertices
   return(dat_return)
 }
+
+## --------------------- Return the time series plots
+plot_timeseries <- function(dat_time,col_u,col_alpha,col_q,col_theta){
+  
+  # ------------ u time series ----------
+  plot_del_u     = ggplot() + 
+    geom_line(data = dat_time, aes(x = t, y = del_u), col = col_u) + 
+    th + 
+    # axis control
+    scale_y_continuous(limits = c(-0.06,0.06), name = "u (m/s)") +
+    geom_rangeframe() +
+    annotate(geom = "segment", x = 0, xend = 60, y = log(0), yend = log(0)) +
+    annotate(geom = "segment", x = log(0), xend = log(0), y = -0.06, yend = 0.06)
+  
+  # ------------ alpha time series ----------
+  plot_del_alp   = ggplot() + 
+    geom_line(data = dat_time, aes(x = t, y = del_alp*180/pi), col = col_alpha) + 
+    th + 
+    # axis control
+    scale_y_continuous(limits = c(-5,5), name = expression(paste(Delta,alpha," (°)"))) +
+    geom_rangeframe() +
+    annotate(geom = "segment", x = 0, xend = 60, y = log(0), yend = log(0)) +
+    annotate(geom = "segment", x = log(0), xend = log(0), y = -5, yend = 5)
+  
+  # ------------ q time series ----------
+  plot_del_q     = ggplot() + 
+    geom_line(data = dat_time, aes(x = t, y = del_q*180/pi), col = col_q) + 
+    th + 
+    # axis control
+    scale_y_continuous(limits = c(-50,50), name = expression(paste(Delta,"q (°/s)"))) +
+    geom_rangeframe() +
+    annotate(geom = "segment", x = 0, xend = 60, y = log(0), yend = log(0)) +
+    annotate(geom = "segment", x = log(0), xend = log(0), y = -50, yend = 50)
+  
+  # ------------ theta time series ----------
+  plot_del_theta = ggplot() + 
+    geom_line(data = dat_time, aes(x = t, y = del_theta*180/pi), col = col_theta) + 
+    th + 
+    # axis control
+    scale_y_continuous(limits = c(-10,10), name = expression(paste(Delta,theta," (°)"))) +
+    geom_rangeframe() +
+    annotate(geom = "segment", x = 0, xend = 60, y = log(0), yend = log(0)) +
+    annotate(geom = "segment", x = log(0), xend = log(0), y = -10, yend = 10)
+  
+  plot_out <- plot_grid(plot_del_u,plot_del_alp,plot_del_q,plot_del_theta,
+                        #arrangement data
+                        ncol = 1,
+                        #labels
+                        labels = c("A","B","C","D"),
+                        label_size = 10,
+                        label_fontfamily = "sans")
+}

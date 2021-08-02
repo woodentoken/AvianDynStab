@@ -102,3 +102,14 @@ def get_Iyy(elbow, manus, coef_data):
           coef_data['elbowmanus'][0] * elbow * manus + coef_data['intercept'][0]
 
     return Iyy
+
+
+def U_ramp_par(G, A, t):
+
+    # assumes a shape of a*t + b
+    a = np.linalg.solve(A, -G)
+    b = np.linalg.solve(A, a)
+
+    x_p = a*t+b
+
+    return x_p
