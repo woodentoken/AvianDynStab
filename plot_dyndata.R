@@ -196,11 +196,11 @@ plot_sp_magphase <- ggplot() +
   #geom_segment(data = dat_sp, aes(x = 0, xend = mag3, y = phase3*180/pi, yend = phase3*180/pi, group = del_z), col = col_theta, alpha = 0.3) + 
   geom_point(data = dat_sp, 
              aes(x = mag3, y = phase3*180/pi,  alpha = 0.5), 
-             size = 2, col = col_theta) + 
+             size = 2, col = col_q) + 
   #geom_segment(data = dat_sp, aes(x = 0, xend = mag4, y = phase4*180/pi, yend = phase4*180/pi, group= del_z), col = col_q, alpha = 0.3) + 
   geom_point(data = dat_sp, 
              aes(x = mag4, y = phase4*180/pi,  alpha = 0.5), 
-             size = 2, col = col_q) + 
+             size = 2, col = col_theta) + 
   th +
   theme_light()+
   theme(panel.grid = element_blank(),
@@ -239,11 +239,11 @@ plot_ph_magphase <- ggplot() +
   #geom_segment(data = dat_ph, aes(x = 0, xend = mag3, y = phase3*180/pi, yend = phase3*180/pi, group = del_z), col = col_theta, alpha = 0.3) + 
   geom_point(data = dat_ph, 
              aes(x = mag3, y = phase3*180/pi,  alpha = 0.5), 
-             size = 2, col = col_theta) + 
+             size = 2, col = col_q) + 
   #geom_segment(data = dat_ph, aes(x = 0, xend = mag4, y = phase4*180/pi, yend = phase4*180/pi, group= del_z), col = col_q, alpha = 0.3) + 
   geom_point(data = dat_ph, 
              aes(x = mag4, y = phase4*180/pi,  alpha = 0.5), 
-             size = 2, col = col_q) + 
+             size = 2, col = col_theta) + 
   th +
   theme_light()+
   theme(panel.grid = element_blank(),
@@ -272,10 +272,13 @@ dat_time_1 <- read.csv('./outputdata/2021_08_01_elbow90_manus155_alpha4.csv', he
 colnames(dat_time_1) <- c("t","del_u","del_alp","del_q","del_theta")
 dat_time_2 <- read.csv('./outputdata/2021_08_01_elbow145_manus155_alpha4.csv', header = FALSE)
 colnames(dat_time_2) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_3 <- read.csv('./outputdata/2021_08_01_elbow115_manus135_alpha4.csv', header = FALSE)
+dat_time_3 <- read.csv('./outputdata/2021_08_01_elbow90_manus105_alpha4.csv', header = FALSE)
 colnames(dat_time_3) <- c("t","del_u","del_alp","del_q","del_theta")
 
 
 plot_time1_dalp <- plot_timeseries(dat_time_1,col_u,col_alpha,col_q,col_theta)
 plot_time2_dalp <- plot_timeseries(dat_time_2,col_u,col_alpha,col_q,col_theta)
 plot_time3_dalp <- plot_timeseries(dat_time_3,col_u,col_alpha,col_q,col_theta)
+
+dat_time_3 <- read.csv('./outputdata/2021_08_02_elbow145_manus155_alpha4_uramp.csv', header = FALSE)
+colnames(dat_time_3) <- c("t","del_u","del_alp","del_q","del_theta")

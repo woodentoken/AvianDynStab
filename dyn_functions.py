@@ -85,13 +85,24 @@ def solve_linsys(m, Iyy, rho, S_max, c_max, elbow, manus, alpha_0, U_0, theta_0,
     return A
 
 
-def def_model(x, t, A):
+def def_model_free(x, t, A):
     dxdt = A.dot(x)
     return dxdt
 
 
-def solve_IVP(A, x0, t):
-    x = odeint(def_model, x0, t, args=(A,))
+def def_model_forced(x, t, A, B, end):
+    dxdt = A.dot(x) + B*t
+    if t > end:
+        dxdt = A.dot(x) + B*end
+    return dxdt
+
+
+def solve_IVP(A, x0, t, B=None, end=None, mod_type="free"):
+    if mod_type == "free":
+        x = odeint(def_model_free, x0, t, args=(A,))
+    if mod_type == "forced":
+        # assumes that u(t) = t
+        x = odeint(def_model_forced, x0, t, args=(A, B, end))
     return x
 
 
@@ -104,12 +115,25 @@ def get_Iyy(elbow, manus, coef_data):
     return Iyy
 
 
-def U_ramp_par(G, A, t):
+def calc_res_dalp(d_alp, t_max, dt, A):
+    x0 = [0, d_alp * np.pi / 180, 0, 0]
+    t = np.linspace(0, t_max, dt)
+    x = solve_IVP(A, x0, t, mod_type="free")
 
-    # assumes a shape of a*t + b
-    a = np.linalg.solve(A, -G)
-    b = np.linalg.solve(A, a)
+    # arrange the data to be saved
+    t.shape = (dt, 1)
+    out_dalp = np.hstack((t, x))
 
-    x_p = a*t+b
+    return out_dalp
 
-    return x_p
+
+def calc_res_uramp(t_max, dt, A, B, end):
+    x0 = [0, 0, 0, 0]
+    t = np.linspace(0, t_max, dt)
+    x = solve_IVP(A, x0, t, B, end, mod_type="forced")
+
+    # arrange the data to be saved
+    t.shape = (dt, 1)
+    out_du = np.hstack((t, x))
+
+    return out_du

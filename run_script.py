@@ -21,6 +21,9 @@ a_test = [-2, 0, 2, 4, 6]
 elbow_test = np.arange(80, 170, 5)
 manus_test = np.arange(100, 185, 5)
 
+today = date.today()
+date_adj = today.strftime("%Y_%m_%d")
+
 with open('LongDynStability_Rigid.csv', 'w', newline='') as res_file:
     writer = csv.writer(res_file)
     writer.writerow(['date', 'alpha', 'U0', 'elbow', 'manus', 'Iyy', 'theta0', 'eignum', 'zeta', 'omega_n',
@@ -45,24 +48,26 @@ for i in a_test:
             if U_0 == 0:
                 continue
 
-            # Step 2: Solve the eigen problem
+            # Step 2: Solve the homogenous eigen problem
             A = dynfn.solve_linsys(m, Iyy, rho, S_max, c_max, elbow, manus, alpha_0, U_0,
                                    theta_0, coef_data, del_x, del_z)
 
-            # Step 3: Extract the time response of the system
-            x0 = [0, 5*np.pi/180, 0, 0]
-            t = np.linspace(0, 60, 5000)
-            x = dynfn.solve_IVP(A, x0, t)
-
-            # Step 4: arrange the data to be saved
-            t.shape = (5000, 1)
-            out = np.hstack((t, x))
-            today = date.today()
-            date_adj = today.strftime("%Y_%m_%d")
+            # Step 3: Extract the time response of the system wrt d_alp
+            out = dynfn.calc_res_dalp(5, 60, 6000, A)
 
             filename = "outputdata/" + \
                        date_adj + "_elbow" + str(elbow) + "_manus" + str(manus) + \
-                       "_alpha" + str(alpha_0) + ".csv"
+                       "_alpha" + str(alpha_0) + "dalp.csv"
             np.savetxt(filename, out, delimiter=",")
 
+            # Step 4: Extract the time response of the system wrt ramped up speed
+            B = np.asarray([0, 0.01, 0, 0])
+
+            ramp_end = 30  # seconds
+            out = dynfn.calc_res_uramp(60, ramp_end*200, A, B, ramp_end)
+
+            filename = "outputdata/" + \
+                       date_adj + "_elbow" + str(elbow) + "_manus" + str(manus) + \
+                       "_alpha" + str(alpha_0) + "_uramp.csv"
+            np.savetxt(filename, out, delimiter=",")
 
