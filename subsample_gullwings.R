@@ -18,6 +18,37 @@ dat_subsample = subsample_frames(dat_keep,dat_dup,curr_WingID,max_sample_no)
 filename_new <- paste(format(Sys.Date(), "%Y_%m_%d"),"_dyn_subsamplewings.csv",sep = "")
 write.csv(dat_subsample,filename_new)
 
+## ---------------- Need to pull out the different shoulder angles ---------------
+
+dat_wingspec <- unique(dat_tail_all[c("WingID","TestID","frameID","elbow","manus","species")])
+dat_all       = read.csv('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/2020_05_25_OrientedWings.csv', 
+                         stringsAsFactors = FALSE,strip.white = TRUE, na.strings = c("") )
+dat_all       = subset(dat_all, species == "lar_gla")
+for (m in 1:nrow(dat_wingspec)){
+  dat_curr = subset(dat_tail_all, 
+             species == dat_wingspec$species[m] & WingID == dat_wingspec$WingID[m] & 
+             TestID == dat_wingspec$TestID[m] & frameID == dat_wingspec$frameID[m])
+  dat_curr_all = subset(dat_all, 
+                        species == dat_wingspec$species[m] & WingID == dat_wingspec$WingID[m] & 
+                        TestID == dat_wingspec$TestID[m] & frameID == dat_wingspec$frameID[m] &
+                        (sweep == -20 | sweep == -10 | sweep == 0) & (dihedral == 20 | dihedral == 10 | dihedral == 0))
+  if (m == 1){
+    complete = dat_curr_all
+  } else{
+    complete = rbind(complete,dat_curr_all)
+  }
+}
+
+filename_new <- paste(format(Sys.Date(), "%Y_%m_%d"),"_dyn_allshoulderwings.csv",sep = "")
+write.csv(complete,filename_new)
+
+## check with plots
+
+m = 1:4
+x = c(complete$Pt1X[m],complete$Pt2X[m],complete$Pt3X[m],complete$Pt4X[m],complete$Pt6X[m],complete$Pt7X[m],complete$Pt8X[m],complete$Pt9X[m],complete$Pt10X[m],complete$Pt11X[m],complete$Pt12X[m])
+y = c(complete$Pt1Y[m],complete$Pt2Y[m],complete$Pt3Y[m],complete$Pt4Y[m],complete$Pt6Y[m],complete$Pt7Y[m],complete$Pt8Y[m],complete$Pt9Y[m],complete$Pt10Y[m],complete$Pt11Y[m],complete$Pt12Y[m])
+z = c(complete$Pt1Z[m],complete$Pt2Z[m],complete$Pt3Z[m],complete$Pt4Z[m],complete$Pt6Z[m],complete$Pt7Z[m],complete$Pt8Z[m],complete$Pt9Z[m],complete$Pt10Z[m],complete$Pt11Z[m],complete$Pt12Z[m])
+
 ################################## duplication function ###################################
 
 allDup <- function (value) # found online by jholtman at gmail.com

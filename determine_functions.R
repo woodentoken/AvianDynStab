@@ -5,15 +5,10 @@ library(pracma)
 load("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/aerodynamic_data.RData")
 #saved after running process_outputdata.R
 load("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/inertial_data.RData")
-# load the Q derivative specific runs
-dat_q <- read.csv("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/MachUpX_qderivatives/List_ConvergedWings_derivatives.csv", header = FALSE)
-names(dat_q) <- c("species","WingID","TestID","FrameID","elbow","manus","alpha",
-                  "U","build_err_max","date","S","ref_c","b_MX","MAC","b",
-                  "sweep","dihedral","twist",'relax',
-                  "CL","CD","Cm","FL","FD","Mm",'q')
 
-# determine the root chord
-dat_all <- read.csv('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/2020_05_25_OrientedWings.csv', stringsAsFactors = FALSE,strip.white = TRUE, na.strings = c("") )
+# determine the root chord from the previous 
+dat_all <- read.csv('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/2020_05_25_OrientedWings.csv', 
+                    stringsAsFactors = FALSE,strip.white = TRUE, na.strings = c("") )
 dat_all <- subset(dat_all, species == "lar_gla" & sweep == 0 & dihedral == 0)
 dat_all$root_c = sqrt((dat_all$Pt12X - dat_all$Pt11X)^2 + (dat_all$Pt12Z - dat_all$Pt11Z)^2)
 dat_all$FrameID <- paste("F", dat_all$frameID, sep = "")
@@ -34,13 +29,44 @@ colnames(coef_all) <- c("y.model","intercept","elbow","manus","elbow2","manus2",
                         "elbowCL","manusCL","elbowmanusCL",
                         "elbowCL2","manusCL2")
 
+# load the MachUpX Outputs for the new runs with tails
+dat_tail <- read.csv("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/List_ConvergedWingsShoulder.csv",
+                     header=FALSE)
+names(dat_tail) <- c("species","WingID","TestID","FrameID","sweep","dihedral","elbow","manus","alpha",
+                  "U","build_err_max","date","S","ref_c","b_MX","MAC","b",
+                  "sweep","dihedral","twist",'relax',
+                  "CL","CD","Cm","FL","FD","Mm")
+dat_tail_all <- read.csv('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/2021_10_13_dyn_subsamplewings.csv', 
+                         stringsAsFactors = FALSE,strip.white = TRUE, na.strings = c("") )
+
+# need to adjust the lift to be a function of the same known paramters about the inertial bird
+# note that the newly ran wings are only from 17_0285
+for (i in 1:nrow(dat_tail)){
+  dat_tail$S_max[i]      = max(dat_num$S_max[which(dat_num$WingID == dat_tail$WingID[i])])
+  dat_tail$root_c_max[i] = max(dat_num$root_c_max[which(dat_num$WingID == dat_tail$WingID[i])])
+}
+
+dat_tail$CL_adj      = dat_tail$FL/(0.5*1.225*10^2*dat_tail$S_max)
+dat_tail$Cm_adj      = dat_tail$Mm/(0.5*1.225*10^2*dat_tail$S_max*dat_tail$root_c_max)
+dat_tail$elbow_scale = dat_tail$elbow/1000
+dat_tail$manus_scale = dat_tail$manus/1000
+dat_tail$alpha_scale = dat_tail$alpha/10
+
+# load the Q derivative specific runs
+dat_q <- read.csv("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/MachUpX_qderivatives/List_ConvergedWings_derivatives.csv",
+                  header = FALSE)
+names(dat_q) <- c("species","WingID","TestID","FrameID","elbow","manus","alpha",
+                  "U","build_err_max","date","S","ref_c","b_MX","MAC","b",
+                  "sweep","dihedral","twist",'relax',
+                  "CL","CD","Cm","FL","FD","Mm",'q')
+
 ## ---------------------------------------------
 ## ------------- Inertia Data ------------------
 ## ---------------------------------------------
 #  !! CAUTION: INCLUDE NOTE IN PAPER THAT I EFFECTIVELY AM EXTRAPOLATING THE INERTIAL RESULS INTO HIGHER ELBOW AND WRIST ANGLES
 
 # subset to the same range as used in the aerodynamic data
-dat_inertial = subset(dat_final,species == "lar_gla" & elbow > 80 & manus > 100)
+dat_inertial = subset(dat_final,species == "lar_gla" & elbow >= 85 & manus >= 105)
 remove(dat_final)
 
 #----- Hard-coded inputs into Python --------
@@ -66,19 +92,26 @@ coef_all$elbowmanus[1] = coef(mod_inertia)["elbow:manus"]
 
 
 # ------ Fit model to CG --------
-## need to fit model to the full_CGx to allow Cm to be adjusted appropriately.
-mod_xcg <- lm(full_CGx ~ elbow*manus + I(elbow^2) + I(elbow^3) +
+## need to fit model to the full_CGx_orgShoulder to allow Cm to be adjusted appropriately.
+## fit a seperate model for each sweep and dihedral config
+mod_xcg <- lm(full_CGx_orgShoulder ~ elbow*manus + I(elbow^2) + I(elbow^3) +
                 I(manus^2)+ I(manus^3), dat_inertial)
 
-mod_zcg <- lm(full_CGz ~ elbow*manus + I(elbow^2) + I(elbow^3) +
+mod_zcg <- lm(full_CGz_orgShoulder ~ elbow*manus + I(elbow^2) + I(elbow^3) +
                 I(manus^2)+ I(manus^3), dat_inertial)
+
+# need a different data fit for each shoulder position
+dat_in1010 <- adjust_inertia(-10,10,dat_inertial)
+
+mod_xcg1010 <- lm(full_CGx_orgShoulder_adj ~ elbow*manus + I(elbow^2) + I(elbow^3) +
+                I(manus^2)+ I(manus^3), dat_in1010)
+
+mod_zcg1010 <- lm(full_CGz_orgShoulder_adj ~ elbow*manus + I(elbow^2) + I(elbow^3) +
+                I(manus^2)+ I(manus^3), dat_in1010)
+
 ## -------------------------------------------------
 ## ------------- Aerodynamic Data ------------------
 ## -------------------------------------------------
-
-# scaling was elbow/1000 manus/1000 alpha/10
-# If I want to input the true values into this same model I instead
-# need to divide each coefficient by however many inputs are being changed
 
 # ------ CD data ------
 # need to fit to experimental data due to the reduced - following same adjustment as the lift in analyse_exp.R
@@ -103,9 +136,12 @@ coef_all$elbowCL2[5]      = coef(mod_CD)["elbow:I(L_comp^2)"]
 coef_all$manusCL2[5]      = coef(mod_CD)["manus:I(L_comp^2)"]
 
 # ------ CL data ------
+# scaling was elbow/1000 manus/1000 alpha/10
+# If I want to input the true values into this same model I instead
+# need to divide each coefficient by however many inputs are being changed
 mod_CL <- lmer(CL_adj ~ elbow_scale*manus_scale*alpha_scale + I(alpha_scale^2) + I(alpha_scale^3) + 
                  I(elbow_scale^2) + 
-                 I(manus_scale^2) + I(manus_scale^3) + (1|WingID), data = subset(dat_num,alpha < 5))
+                 I(manus_scale^2) + I(manus_scale^3) + (1|WingID), data = subset(dat_tail,alpha < 5))
 
 coef_all$y.model[3]    = "CL"
 coef_all$intercept[3]  = summary(mod_CL)$coefficients["(Intercept)","Estimate"]
@@ -124,23 +160,29 @@ coef_all$elbowmanusalpha[3] = summary(mod_CL)$coefficients["elbow_scale:manus_sc
 
 # ------------ Adjust the pitching moment data ---------------
 # need to adjust the moment to be calculated about the current xCG
-dat_num$xcg = predict(mod_xcg,dat_num)
-dat_num$zcg = predict(mod_zcg,dat_num)
+dat_tail$xcg = predict(mod_xcg1010,dat_tail) # the origin must be at the shoulder joint!!
+dat_tail$zcg = predict(mod_zcg1010,dat_tail) # the origin must be at the shoulder joint!!
 
-dat_num$L_comp = dat_num$CL_adj # make sure that this is the correct lit coefficient
-dat_num$CD_adj_exp = predict(mod_CD,dat_num)
+dat_tail$L_comp = dat_tail$CL_adj # make sure that this is the correct lit coefficient to use to predict the drag in the next step
+dat_tail$CD_adj_exp = predict(mod_CD,dat_tail)
 
 # adjust the pitching moment be about the true center of gravity
-dat_num$Cm_CG = dat_num$Cm_adj + 
-  (1/dat_num$c_max)*((dat_num$CL_adj*cosd(dat_num$alpha)+dat_num$CD_adj_exp*sind(dat_num$alpha))*(-dat_num$xcg) + 
-                       (dat_num$CL_adj*sind(dat_num$alpha)-dat_num$CD_adj_exp*cosd(dat_num$alpha))*(-dat_num$zcg))
-#adjust to be about the root chord
-dat_num$Cm_CG = dat_num$Cm_CG*(dat_num$c_max/dat_num$root_c_max)
+# assumes that the MachUpX bird CG is the same distance from the shoulder as the inertial bird
+dat_tail$Cm_CG = dat_tail$Cm_adj + ((dat_tail$CL_adj*cosd(dat_tail$alpha)+dat_tail$CD_adj_exp*sind(dat_tail$alpha))*(-dat_tail$xcg) + 
+                       (dat_tail$CL_adj*sind(dat_tail$alpha)-dat_tail$CD_adj_exp*cosd(dat_tail$alpha))*(-dat_tail$zcg))
+
+dat_num$xcg = predict(mod_xcg,dat_num) # the origin must be at the shoulder joint!!
+dat_num$zcg = predict(mod_zcg,dat_num) # the origin must be at the shoulder joint!!
+
+dat_num$L_comp = dat_num$CL_adj # make sure that this is the correct lit coefficient to use to predict the drag in the next step
+dat_num$CD_adj_exp = predict(mod_CD,dat_num)
+dat_num$Cm_CG = dat_num$Cm_adj + ((dat_num$CL_adj*cosd(dat_num$alpha)+dat_num$CD_adj_exp*sind(dat_num$alpha))*(-dat_num$xcg) + 
+                                      (dat_num$CL_adj*sind(dat_num$alpha)-dat_num$CD_adj_exp*cosd(dat_num$alpha))*(-dat_num$zcg))
 
 # ------ Cm data ------
 mod_Cm <- lmer(Cm_CG ~ elbow_scale*manus_scale*CL_adj + I(CL_adj^2) + I(CL_adj^3) + 
                  I(elbow_scale^2) + I(elbow_scale^3) + 
-                 I(manus_scale^2) + (1|WingID), data = subset(dat_num,alpha < 5))
+                 I(manus_scale^2) + (1|WingID), data = subset(dat_tail,alpha < 5))
 
 coef_all$y.model[4]    = "Cm"
 coef_all$intercept[4]  = summary(mod_Cm)$coefficients["(Intercept)","Estimate"]
@@ -159,15 +201,15 @@ coef_all$elbowmanusCL[4] = summary(mod_Cm)$coefficients["elbow_scale:manus_scale
 
 # ------ dCm/dCL data ------
 
-dat_wingspec <- unique(dat_num[c("WingID","TestID","FrameID","elbow","manus","species","twist","sweep","dihedral","S_ref","c_max","elbow_scale","manus_scale")])
+dat_wingspec <- unique(dat_tail[c("WingID","TestID","FrameID","elbow","manus","species","twist","sweep","dihedral","S_max","root_c_max","elbow_scale","manus_scale")])
 no_testedconfigs = nrow(dat_wingspec)
-dat_stab_adj  <- data.frame(matrix(NA, nrow = no_testedconfigs, ncol = 8))
-names(dat_stab_adj) <- c("species","WingID","TestID","FrameID","elbow","manus","cmcl","cm0")
+dat_stab_adj  <- data.frame(matrix(NA, nrow = no_testedconfigs, ncol = 9))
+names(dat_stab_adj) <- c("species","WingID","TestID","FrameID","elbow","manus","cmcl","cm0","R2")
 
 # need to loop through all configurations to re-calculate the static margin
 for (m in 1:no_testedconfigs){
   # subset data to be of one wing configuration at a time and subset to only fit angles under 5deg
-  dat_curr <- subset(dat_num, 
+  dat_curr <- subset(dat_tail, 
                      species == dat_wingspec$species[m] & WingID == dat_wingspec$WingID[m] & 
                        TestID == dat_wingspec$TestID[m] & FrameID == dat_wingspec$FrameID[m] & alpha < 5)
   
