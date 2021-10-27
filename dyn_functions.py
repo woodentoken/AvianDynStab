@@ -6,27 +6,42 @@ import aero_functions as aerofn
 from scipy.integrate import odeint
 
 
-def solve_linsys(m, Iyy, rho, S_max, c_max, elbow, manus, alpha_0, U_0, theta_0, aero_data, del_x, del_z):
-
+def solve_linsys(m, Iyy, rho, S, c, elbow, manus, alpha_0, V_e, theta_rad, aero_data):
+    # Caution: theta_0 is in rad and alpha_0 is in deg
     # Collect all necessary aerodynamic coefficients
     CL = aerofn.get_CL(aero_data, elbow, manus, alpha_0)
     CD = aerofn.get_CD(aero_data, elbow, manus, CL)
+
     # Collect all angle of attack derivatives
     CL_alp = aerofn.get_dCL_dalp(aero_data, elbow, manus, alpha_0)
     CD_alp = aerofn.get_dCD_dalp(aero_data, elbow, manus, CL, CL_alp)
     Cm_alp = aerofn.get_dCm_dalp(aero_data, elbow, manus, CL_alp)
+
     # Collect all pitch rate derivatives
     CL_q = aerofn.get_dCL_dq(aero_data, elbow, manus)
     Cm_q = aerofn.get_dCm_dq(aero_data, elbow, manus)
+
     # define common constants
-    m1_inv = 1/(2*m/(rho*U_0*S_max))
-    Iyy1_inv = 1/(2*Iyy/(rho*(U_0**2)*S_max*c_max))
-    w1 = m*9.81/(0.5*rho*(U_0**2)*S_max)
+    alpha_rad = np.deg2rad(alpha_0)
+    m_til = rho*V_e*S/(2*m)
+    I_til = rho*(V_e**2)*S*c/(2*Iyy)
+    w_til = 9.81/V_e
+    # just for saving purposes
+    trim = aerofn.trim_force(np.array([V_e, theta_rad]), m*9.81, rho, S, CL, CD, alpha_rad)
+    Cm = aerofn.get_Cm(aero_data, elbow, manus, CL)
+
     # define the linear system
-    A = np.array([[m1_inv * (-2 * CD), m1_inv * (CL - CD_alp), 0, m1_inv * (-w1*np.cos(theta_0))],
-                  [m1_inv * (-2 * CL), m1_inv * (-CD - CL_alp), 1+(-CL_q*m1_inv), m1_inv * (-w1*np.sin(theta_0))],
-                  [0, Iyy1_inv * Cm_alp, Iyy1_inv * Cm_q, 0],
+    A = np.array([[2 * m_til * (CL*np.sin(alpha_rad)-CD*np.cos(alpha_rad)),
+                   m_til * ((CL - CD_alp)*np.cos(alpha_rad) + (CD + CL_alp)*np.sin(alpha_rad)),
+                   (m_til*CL_q+1)*np.sin(alpha_rad),
+                   -w_til*np.cos(theta_rad)],
+                  [2 * m_til * (-CL*np.cos(alpha_rad) - CD*np.sin(alpha_rad)),
+                   m_til * ((CL - CD_alp)*np.sin(alpha_rad) - (CD + CL_alp)*np.cos(alpha_rad)),
+                   (m_til*CL_q+1)*np.cos(alpha_rad),
+                   -w_til*np.sin(theta_rad)],
+                  [0, I_til * Cm_alp, I_til * Cm_q, 0],
                   [0, 0, 1, 0]])
+
     # solve for the free response of the linear system
     eig_val, eig_vec = np.linalg.eig(A)
 
@@ -58,29 +73,29 @@ def solve_linsys(m, Iyy, rho, S_max, c_max, elbow, manus, alpha_0, U_0, theta_0,
     date_adj = today.strftime("%Y_%m_%d")
 
     # Save data
-    with open('LongDynStability_Rigid.csv', 'a', newline="") as res_file:
+    with open((date_adj+'_LongDynStability_Rigid.csv'), 'a', newline="") as res_file:
 
         writer = csv.writer(res_file)
         eignum = 1
-        writer.writerow([date_adj, alpha_0, U_0, elbow, manus, Iyy, theta_0, eignum, damp[0], freq[0],
+        writer.writerow([date_adj, alpha_0, V_e, elbow, manus, Iyy, theta_rad, eignum, damp[0], freq[0],
                          eig_val[0].real, eig_val[0].imag, mag[0], mag[1], mag[2], mag[3],
                          phase[0], phase[1], phase[2], phase[3],
-                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, del_x, del_z])
+                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, trim[0], trim[1], Cm])
         eignum = 2
-        writer.writerow([date_adj, alpha_0, U_0, elbow, manus, Iyy, theta_0, eignum, damp[0], freq[0],
+        writer.writerow([date_adj, alpha_0, V_e, elbow, manus, Iyy, theta_rad, eignum, damp[0], freq[0],
                          eig_val[1].real, eig_val[1].imag, mag[4], mag[5], mag[6], mag[7],
                          phase[4], phase[5], phase[6], phase[7],
-                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, del_x, del_z])
+                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, trim[0], trim[1], Cm])
         eignum = 3
-        writer.writerow([date_adj, alpha_0, U_0, elbow, manus, Iyy, theta_0, eignum, damp[1], freq[1],
+        writer.writerow([date_adj, alpha_0, V_e, elbow, manus, Iyy, theta_rad, eignum, damp[1], freq[1],
                          eig_val[2].real, eig_val[2].imag, mag[8], mag[9], mag[10], mag[11],
                          phase[8], phase[9], phase[10], phase[11],
-                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, del_x, del_z])
+                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, trim[0], trim[1], Cm])
         eignum = 4
-        writer.writerow([date_adj, alpha_0, U_0, elbow, manus, Iyy, theta_0, eignum, damp[1], freq[1],
+        writer.writerow([date_adj, alpha_0, V_e, elbow, manus, Iyy, theta_rad, eignum, damp[1], freq[1],
                          eig_val[3].real, eig_val[3].imag, mag[12], mag[13], mag[14], mag[15],
                          phase[12], phase[13], phase[14], phase[15],
-                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, del_x, del_z])
+                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, trim[0], trim[1], Cm])
 
     return A
 
@@ -90,19 +105,19 @@ def def_model_free(x, t, A):
     return dxdt
 
 
-def def_model_forced(x, t, A, B, end):
-    dxdt = A.dot(x) + B*t
+def def_model_forced(x, t, A, B, C, end):
+    dxdt = A.dot(x) + B*t + C
     if t > end:
-        dxdt = A.dot(x) + B*end
+        dxdt = A.dot(x) + B*end + C
     return dxdt
 
 
-def solve_IVP(A, x0, t, B=None, end=None, mod_type="free"):
+def solve_IVP(A, x0, t, B=None, C=None, end=None, mod_type="free"):
     if mod_type == "free":
         x = odeint(def_model_free, x0, t, args=(A,))
     if mod_type == "forced":
         # assumes that u(t) = t
-        x = odeint(def_model_forced, x0, t, args=(A, B, end))
+        x = odeint(def_model_forced, x0, t, args=(A, B, C, end))
     return x
 
 
@@ -115,8 +130,8 @@ def get_Iyy(elbow, manus, coef_data):
     return Iyy
 
 
-def calc_res_dalp(d_alp, t_max, dt, A):
-    x0 = [0, d_alp * np.pi / 180, 0, 0]
+def calc_res_dalp(x0, t_max, dt, A):
+
     t = np.linspace(0, t_max, dt)
     x = solve_IVP(A, x0, t, mod_type="free")
 
@@ -127,10 +142,9 @@ def calc_res_dalp(d_alp, t_max, dt, A):
     return out_dalp
 
 
-def calc_res_uramp(t_max, dt, A, B, end):
-    x0 = [0, 0, 0, 0]
+def calc_res_uramp(x0, t_max, dt, A, B, C, end):
     t = np.linspace(0, t_max, dt)
-    x = solve_IVP(A, x0, t, B, end, mod_type="forced")
+    x = solve_IVP(A, x0, t, B, C, end, mod_type="forced")
 
     # arrange the data to be saved
     t.shape = (dt, 1)

@@ -3,30 +3,39 @@ import numpy as np
 import scipy.optimize as opt
 
 
-def trim_aero(W, rho, S, c_root, elbow, manus, alpha_0, aero_data):
-    U_0 = 0
-    # use lift equation to solve for theta
-    CL = get_CL(aero_data, elbow, manus, alpha_0)
-    if CL < 0:
-        neg_CL = 1
-    CD = get_CD(aero_data, elbow, manus, CL)
-    # calculate the necessary flight path angle for trim
-    theta_0 = np.arctan(-CD/CL)
-    # calculate the necessary speed for trim
-    if CL > 0:
-        U_0 = np.sqrt(2*W*np.cos(theta_0)/(rho*S*CL))
+def trim_aero(W, rho, S, elbow, manus, aero_data):
+    # calculate the necessary flight path angle and speed for trim
+    pitch_guess = np.array([0])
+    pitch_sol = opt.fsolve(trim_pitch, pitch_guess,
+                           args=(elbow, manus, aero_data))
+    alpha_0 = pitch_sol[0]
     alpha_rad = np.deg2rad(alpha_0)
-    # calculate the minimum sweep and dihedral angle necessary to balance out the pitching moment
-    Cm = get_Cm(aero_data, elbow, manus, CL)
-    x0 = [0]
-    test1 = opt.minimize(min_geo_angle, x0, args=(Cm, CL, CD, alpha_rad, c_root))
-    del_x = test1.x[0]
-    del_z = (c_root / (CL * np.sin(alpha_rad) - CD * np.cos(alpha_rad))) * (
-                Cm - (CL * np.cos(alpha_rad) + CD * np.sin(alpha_rad)) * (del_x / c_root))
-    return theta_0, U_0, del_x, del_z
+
+    CL = get_CL(aero_data, elbow, manus, alpha_0)
+    CD = get_CD(aero_data, elbow, manus, CL)
+    # solve the force equations for V and theta at this alpha
+    force_guess = np.array([10, 0])
+    force_sol = opt.fsolve(trim_force, force_guess,
+                           args=(W, rho, S, CL, CD, alpha_rad))
+
+    # save outputs note that these constraints are used in the solving which is why the numbers are saved like this
+    V_e = abs(force_sol[0])
+    theta_rad = -abs(force_sol[1])
+
+    if theta_rad < -0.5*np.pi:
+        theta_rad = -0.5*np.pi
+
+    # make sure this result actually solved for an equilibrium
+    out_forces = trim_force(np.array([V_e, theta_rad]), W, rho, S, CL, CD, alpha_rad)
+    if abs(out_forces[0]) > 10e-4 or abs(out_forces[0]) > 10e-4:
+        theta_rad = "NA"
+        V_e = "NA"
+
+    return theta_rad, V_e, alpha_0
 
 
 def get_CL(aero_data, elbow, manus, alpha_0):
+    # incoming alpha should be in degrees
     CL = aero_data['elbow'][2]*elbow + aero_data['manus'][2]*manus + \
          aero_data['elbow2'][2]*(elbow**2) + aero_data['manus2'][2]*(manus**2) + \
          aero_data['elbow3'][2]*(elbow**3) + aero_data['manus3'][2]*(manus**3) + \
@@ -39,6 +48,7 @@ def get_CL(aero_data, elbow, manus, alpha_0):
 
 
 def get_dCL_dalp(aero_data, elbow, manus, alpha_0):
+    # incoming alpha should be in degrees
     CL_alp = aero_data['alpha'][2] + 2 * aero_data['alpha2'][2] * alpha_0 + \
              3 * aero_data['alpha3'][2] * (alpha_0 ** 2) + aero_data['elbowalpha'][2] * elbow + \
              aero_data['manusalpha'][2] * manus + aero_data['elbowmanusalpha'][2] * elbow * manus
@@ -66,7 +76,7 @@ def get_dCD_dalp(aero_data, elbow, manus, CL, CL_alp):
            2*aero_data['elbowCL2'][4] * elbow * CL + 2*aero_data['manusCL2'][4] * manus * CL
 
     CD_alp = cdcl * CL_alp
-    # output will be in radians
+    # output will be in radians because of adjustment in get_dCL_dalp
     return CD_alp
 
 
@@ -79,7 +89,6 @@ def get_Cm(aero_data, elbow, manus, CL):
          aero_data['CL3'][3]*(CL**3) + aero_data['elbowCL'][3]*elbow*CL + \
          aero_data['manusCL'][3]*manus*CL + aero_data['elbowmanusCL'][3]*elbow*manus*CL
 
-    # output will be in radians
     return Cm
 
 
@@ -90,7 +99,7 @@ def get_dCm_dalp(aero_data, elbow, manus, CL_alp):
            aero_data['elbowmanus'][1] * elbow * manus + aero_data['intercept'][1]
 
     Cm_alp = cmcl * CL_alp
-    # output will be in radians
+    # output will be in radians because of adjustment in get_dCL_dalp
     return Cm_alp
 
 
@@ -98,7 +107,7 @@ def get_dCL_dq(aero_data, elbow, manus):
     CL_q = aero_data['elbow'][5]*elbow + aero_data['manus'][5]*manus + \
            aero_data['elbow2'][5] * elbow ** 2 + aero_data['manus2'][5] * manus ** 2 + \
            aero_data['elbowmanus'][5] * elbow * manus + aero_data['intercept'][5]
-    # output will be in radians
+    # output will be in radians because incoming q is in radians
     return CL_q
 
 
@@ -106,7 +115,7 @@ def get_dCm_dq(aero_data, elbow, manus):
     Cm_q = aero_data['elbow'][6]*elbow + aero_data['manus'][6]*manus + \
            aero_data['elbow2'][6] * elbow ** 2 + aero_data['manus2'][6] * manus ** 2 + \
            aero_data['elbowmanus'][6] * elbow * manus + aero_data['intercept'][6]
-    # output will be in radians
+    # output will be in radians because incoming q is in radians
     return Cm_q
 
 
@@ -116,3 +125,27 @@ def min_geo_angle(x, Cm, CL, CD, alpha, c_root):
     out = x**2 + z**2
 
     return out
+
+
+def trim_force(x, W, rho, S, CL, CD, alpha_rad):
+    V = abs(x[0])
+    theta_rad = -abs(x[1])
+
+    if theta_rad < -0.5*np.pi:
+        theta_rad = -0.5*np.pi
+
+    F = np.empty(2)
+    # x direction forces
+    F[0] = 0.5 * rho * V ** 2 * S * (CL * np.sin(alpha_rad) - CD * np.cos(alpha_rad)) - W * np.sin(theta_rad)
+    # z direction forces
+    F[1] = 0.5 * rho * V ** 2 * S * (-CL * np.cos(alpha_rad) - CD * np.sin(alpha_rad)) + W * np.cos(theta_rad)
+
+    return F
+
+
+def trim_pitch(x, elbow, manus, aero_data):
+    alpha_0 = x
+    CL = get_CL(aero_data, elbow, manus, alpha_0)
+    Cm = get_Cm(aero_data, elbow, manus, CL)
+
+    return Cm
