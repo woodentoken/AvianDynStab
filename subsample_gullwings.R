@@ -19,7 +19,9 @@ filename_new <- paste(format(Sys.Date(), "%Y_%m_%d"),"_dyn_subsamplewings.csv",s
 write.csv(dat_subsample,filename_new)
 
 ## ---------------- Need to pull out the different shoulder angles ---------------
-
+# This following piece is run seperately from the above piece 
+dat_tail_all <- read.csv('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/2021_10_13_dyn_subsamplewings.csv', 
+                         stringsAsFactors = FALSE,strip.white = TRUE, na.strings = c("") ) # this is the previously generated output from above
 dat_wingspec <- unique(dat_tail_all[c("WingID","TestID","frameID","elbow","manus","species")])
 dat_all       = read.csv('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/2020_05_25_OrientedWings.csv', 
                          stringsAsFactors = FALSE,strip.white = TRUE, na.strings = c("") )
@@ -30,8 +32,7 @@ for (m in 1:nrow(dat_wingspec)){
              TestID == dat_wingspec$TestID[m] & frameID == dat_wingspec$frameID[m])
   dat_curr_all = subset(dat_all, 
                         species == dat_wingspec$species[m] & WingID == dat_wingspec$WingID[m] & 
-                        TestID == dat_wingspec$TestID[m] & frameID == dat_wingspec$frameID[m] &
-                        (sweep == -20 | sweep == -10 | sweep == 0) & (dihedral == 20 | dihedral == 10 | dihedral == 0))
+                        TestID == dat_wingspec$TestID[m] & frameID == dat_wingspec$frameID[m])
   if (m == 1){
     complete = dat_curr_all
   } else{
