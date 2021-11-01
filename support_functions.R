@@ -1,6 +1,9 @@
 ## --------- This script maintains all the supporting functions needed for analysis
 
-## ---------------- Remove points in the predicted that are outside of the convex hull ---------------- 
+
+### ---------------------------------------------------------------------------------------
+### -------- Remove points in the predicted that are outside of the convex hull -----------
+### ---------------------------------------------------------------------------------------
 cut_trueshape <- function(dat,dat_geom,col_elbow,col_manus){
   # fit the convex hull with an alpha factor
   alphashape <- ahull(dat_geom, alpha = 30)
@@ -23,7 +26,9 @@ cut_trueshape <- function(dat,dat_geom,col_elbow,col_manus){
   return(dat_return)
 }
 
-## --------------------- Return the time series plots
+### ---------------------------------------------------------------------------------------
+## --------------------- Return the time series plots -------------------------------------
+### ---------------------------------------------------------------------------------------
 plot_timeseries <- function(dat_time,col_u,col_alpha,col_q,col_theta,lim_u,lim_alpha,lim_q,lim_theta,break_q, break_theta,lim_t){
   
   # ------------ u time series ----------
@@ -78,6 +83,9 @@ plot_timeseries <- function(dat_time,col_u,col_alpha,col_q,col_theta,lim_u,lim_a
                         label_fontfamily = "sans")
 }
 
+### ---------------------------------------------------------------------------------------
+### ------------------------- Save the Plot Legend ----------------------------------------
+### ---------------------------------------------------------------------------------------
 
 #create function to retrieve the legend as an object
 g_legend <- function(a.gplot){
@@ -85,6 +93,10 @@ g_legend <- function(a.gplot){
   leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
   legend <- tmp$grobs[[leg]]
   return(legend)}
+
+### ---------------------------------------------------------------------------------------
+### ------------------------ Kronecker Delta Function -------------------------------------
+### ---------------------------------------------------------------------------------------
 
 kronecker_delta <- function(i,j){
   
@@ -95,6 +107,10 @@ kronecker_delta <- function(i,j){
     return(0)
   }
 }
+
+### ---------------------------------------------------------------------------------------
+### ------------------------ Parallel Axis Theorem ----------------------------------------
+### ---------------------------------------------------------------------------------------
 
 parallelaxis <- function(I, offset_vec, m, cg_a){
   
@@ -120,6 +136,10 @@ parallelaxis <- function(I, offset_vec, m, cg_a){
   }
   return(I_new)
 }
+
+### ---------------------------------------------------------------------------------------
+### ---------------- Shift the I origin between 2 arbitrary points ------------------------
+### ---------------------------------------------------------------------------------------
 
 shift_Iorigin <- function(input_I,input_origin,input_CG,input_cg_or_a,input_m,new_origin){
   mass_properties = as.data.frame(matrix(0, nrow = 0, ncol = 7)) # overall data

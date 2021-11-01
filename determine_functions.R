@@ -22,22 +22,40 @@ dat_num$root_c_max[which(dat_num$WingID == "16_0048")] = max(dat_num$root_c[whic
 
 
 # load the MachUpX Outputs for the new runs with tails
-dat_shoulder <- read.csv("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/Outputs_MachUpX/2021_10_25_List_ConvergedWingsShoulder.csv",
+dat_shoulder <- read.csv("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/Outputs_MachUpX/2021_10_22_List_ConvergedWingsShoulder_Sw-10_Di10.csv",
                      header=FALSE)
-tmp <- read.csv("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/Outputs_MachUpX/2021_10_22_List_ConvergedWingsShoulder_Sw-10_Di10.csv",
+tmp1 <- read.csv("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/Outputs_MachUpX/2021_10_25_List_ConvergedWingsShoulder.csv",
                 header=FALSE)
+tmp2 <- read.csv("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/Outputs_MachUpX/2021_10_30_List_ConvergedWingsShoulder.csv",
+                 header=FALSE)
+dat_shoulder <- rbind(dat_shoulder,tmp1,tmp2)
+names(dat_shoulder) <- c("species","WingID","TestID","FrameID","sweep","dihedral","elbow","manus","alpha",
+                         "U","build_err_max","date","S","ref_c","b_MX","MAC","b",
+                         "tip_sweep","tip_dihedral","twist",'relax',
+                         "CL","CD","Cm","FL","FD","Mm")
+# Read in the standard results that are missing a sweep and dihedral column
 tmp <- read.csv("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/Outputs_MachUpX/2021_10_22_List_ConvergedWingsTail.csv",
                 header=FALSE)
+names(tmp) <- c("species","WingID","TestID","FrameID","elbow","manus","alpha",
+                "U","build_err_max","date","S","ref_c","b_MX","MAC","b",
+                "tip_sweep","tip_dihedral","twist",'relax',
+                "CL","CD","Cm","FL","FD","Mm")
+tmp$sweep    = 0
+tmp$dihedral = 0
+# re-order to match
+tmp <- tmp[,c("species","WingID","TestID","FrameID","sweep","dihedral","elbow","manus","alpha",
+              "U","build_err_max","date","S","ref_c","b_MX","MAC","b",
+              "tip_sweep","tip_dihedral","twist",'relax',
+              "CL","CD","Cm","FL","FD","Mm")]
 dat_shoulder <- rbind(dat_shoulder,tmp)
-names(dat_shoulder) <- c("species","WingID","TestID","FrameID","sweep","dihedral","elbow","manus","alpha",
-                  "U","build_err_max","date","S","ref_c","b_MX","MAC","b",
-                  "sweep","dihedral","twist",'relax',
-                  "CL","CD","Cm","FL","FD","Mm")
+
 dat_tail_all <- read.csv('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/2021_10_13_dyn_subsamplewings.csv', 
                          stringsAsFactors = FALSE,strip.white = TRUE, na.strings = c("") )
 
+remove(tmp,tmp1,tmp2) # clean up
+
 # need to adjust the lift to be a function of the same known paramters about the inertial bird
-# note that the newly ran wings are only from 17_0285
+
 for (i in 1:nrow(dat_shoulder)){
   dat_shoulder$S_max[i]      = max(dat_num$S_max[which(dat_num$WingID == dat_shoulder$WingID[i])])
   dat_shoulder$root_c_max[i] = max(dat_num$root_c_max[which(dat_num$WingID == dat_shoulder$WingID[i])])
@@ -50,12 +68,15 @@ dat_shoulder$manus_scale = dat_shoulder$manus/1000
 dat_shoulder$alpha_scale = dat_shoulder$alpha/10
 
 # load the Q derivative specific runs - NEED TO DECIDE IF THIS NEEDS TO BE RE-RUN FOR EACH SHOULDER...
-dat_q <- read.csv("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/MachUpX_qderivatives/List_ConvergedWings_derivatives.csv",
+dat_q <- read.csv("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/Outputs_MachUpX/2021_11_01_List_ConvergedWings_q.csv",
                   header = FALSE)
 names(dat_q) <- c("species","WingID","TestID","FrameID","elbow","manus","alpha",
                   "U","build_err_max","date","S","ref_c","b_MX","MAC","b",
                   "sweep","dihedral","twist",'relax',
                   "CL","CD","Cm","FL","FD","Mm",'q')
+# note that the wings ran for the q derivatives are only from 17_0285
+dat_q$CL_adj = dat_q$FL/(0.5*1.225*10^2*max(dat_num$S[which(dat_num$WingID == "17_0285")]))
+dat_q$L_comp = dat_q$CL_adj
 
 ## ---------------------------------------------
 ## ------------- Inertia Data ------------------
@@ -75,7 +96,7 @@ max(dat_inertial$c_max) # root chord approximation - calculated in the same mann
 uni_shoulder = unique(dat_shoulder[,c("sweep","dihedral")])
 count = 1 # initialize
 
-coef_all = as.data.frame(matrix(0,nrow = 7, ncol = 24))
+coef_all = as.data.frame(matrix(0,nrow = 5, ncol = 24))
 colnames(coef_all) <- c("y.model",
                         "intercept","elbow","manus","elbow2","manus2",
                         "elbow3","manus3","elbowmanus",
@@ -117,80 +138,14 @@ dat_shoulder$L_comp     = dat_shoulder$CL_adj # make sure that this is the corre
 dat_shoulder$CD_adj_exp = predict(mod_CD,dat_shoulder)
 dat_shoulder$D_adj_exp  = (0.5*1.225*10^2*dat_shoulder$S_max)*dat_shoulder$CD_adj_exp
 
-## ----------------- Step 0: Pitch rate derivatives ------------------
-
-# CLq 
-dat_q$xcg = predict(mod_xcg,dat_q)
-dat_q$zcg = predict(mod_zcg,dat_q)
-dat_q$CL_adj = dat_q$FL/(0.5*1.225*10^2*max(dat_num$S[which(dat_num$WingID == "17_0285")]))
-dat_q$L_comp = dat_q$CL_adj
-# predict the drag for this configuration
+# Calculate the estimated drag for the derivatives as well
 dat_q$CD_adj_exp = predict(mod_CD,dat_q)
 dat_q$D_adj_exp = (0.5*1.225*10^2*max(dat_num$S[which(dat_num$WingID == "17_0285")]))*dat_q$CD_adj_exp
-
-# adjust the pitching moment be about the true center of gravity
-dat_q$M_CG = dat_q$Mm + ((dat_q$FL*cosd(dat_q$alpha)+dat_q$D_adj_exp*sind(dat_q$alpha))*(-dat_q$xcg) + 
-                           (dat_q$FL*sind(dat_q$alpha)-dat_q$D_adj_exp*cosd(dat_q$alpha))*(-dat_q$zcg))
-
-# Note this pitching moment is defined relative to the root chord
-dat_q$Cm_CG <- dat_q$M_CG/(0.5*1.225*10^2*max(dat_num$S[which(dat_num$WingID == "17_0285")])*max(dat_num$root_c_max[which(dat_num$WingID == "17_0285")]))
-
-dat_q_ind = as.data.frame(matrix(NA,nrow=61,ncol=8))
-names(dat_q_ind) = c("species","WingID","TestID","FrameID","elbow","manus","CL_q","Cm_q")
-count = 1
-
-for (i in 1:length(unique(dat_q$FrameID))){
-  curr_dat1 = subset(dat_q, FrameID == unique(dat_q$FrameID)[i])
-  
-  for(j in 1:length(unique(curr_dat1$alpha))){
-    curr_dat = subset(dat_q, FrameID == unique(dat_q$FrameID)[i] & alpha == unique(curr_dat1$alpha)[j])
-    if(nrow(curr_dat) < 4){next
-      count = count + 1}
-    mod_CL_q <- lm(CL_adj ~ q, data = curr_dat)
-    mod_Cm_q <- lm(Cm_CG ~ q, data = curr_dat)
-    
-    dat_q_ind$species[count] <- as.character(curr_dat$species[1])
-    dat_q_ind$WingID[count]  <- curr_dat$WingID[1]
-    dat_q_ind$TestID[count]  <- curr_dat$TestID[1]
-    dat_q_ind$FrameID[count] <- curr_dat$FrameID[1]
-    dat_q_ind$alpha[count]   <- unique(curr_dat1$alpha)[j]
-    dat_q_ind$elbow[count]   <- curr_dat$elbow[1]
-    dat_q_ind$manus[count]   <- curr_dat$manus[1]
-    
-    dat_q_ind$CL_q[count]    <- coefficients(mod_CL_q)["q"]
-    dat_q_ind$Cm_q[count]    <- coefficients(mod_Cm_q)["q"]
-    dat_q_ind$CL_q_R2[count]    <- summary(mod_CL_q)$r.squared
-    dat_q_ind$Cm_q_R2[count]    <- summary(mod_Cm_q)$r.squared
-    dat_q_ind$no_sample[count]  <- nrow(curr_dat)
-    count = count + 1
-  }
-}
-
-mod_CL_q_ind <- lm(CL_q ~ elbow*manus + I(elbow^2) + I(manus^2), data = dat_q_ind)
-
-coef_all$y.model[6]    = "dCLdq"
-coef_all$intercept[6]  = coef(mod_CL_q_ind)["(Intercept)"]
-coef_all$elbow[6]      = coef(mod_CL_q_ind)["elbow"]
-coef_all$manus[6]      = coef(mod_CL_q_ind)["manus"]
-coef_all$elbowmanus[6] = coef(mod_CL_q_ind)["elbow:manus"]
-coef_all$elbow2[6]      = coef(mod_CL_q_ind)["I(elbow^2)"]
-coef_all$manus2[6]      = coef(mod_CL_q_ind)["I(manus^2)"]
-
-
-mod_Cm_q_ind <- lm(Cm_q ~ elbow*manus + I(elbow^2) + I(manus^2), data = dat_q_ind)
-
-coef_all$y.model[7]    = "dCmdq"
-coef_all$intercept[7]  = coef(mod_Cm_q_ind)["(Intercept)"]
-coef_all$elbow[7]      = coef(mod_Cm_q_ind)["elbow"]
-coef_all$manus[7]      = coef(mod_Cm_q_ind)["manus"]
-coef_all$elbowmanus[7] = coef(mod_Cm_q_ind)["elbow:manus"]
-coef_all$elbow2[7]      = coef(mod_Cm_q_ind)["I(elbow^2)"]
-coef_all$manus2[7]      = coef(mod_Cm_q_ind)["I(manus^2)"]
 
 ## -------------------------------------------------
 ## ----- Iterate through shoulder positions --------
 ## -------------------------------------------------
-
+count_q = 1
 for (k in 1:nrow(uni_shoulder)){
   
   # save the given shoulder angle
@@ -342,17 +297,123 @@ for (k in 1:nrow(uni_shoulder)){
   coef_all$manus3[2]     = summary(mod_cmcl)$coefficients["I(manus_scale^3)","Estimate"]/(1000^3)
   coef_all$elbowmanus[2] = summary(mod_cmcl)$coefficients["elbow_scale:manus_scale","Estimate"]/(1000^2)
   
-  write.csv(coef_all,paste('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/',filename))
+  ## ----------------------------------------------------------- 
+  ## ----------------- Pitch rate derivatives ------------------
+  ## -----------------------------------------------------------
+
+  curr_dat_q = subset(dat_q,
+                      sweep == uni_shoulder$sweep[k] & dihedral == uni_shoulder$dihedral[k])
+
+  # estimate the center of gravity of these configurations
+  curr_dat_q$xcg = predict(mod_xcg,curr_dat_q)
+  curr_dat_q$zcg = predict(mod_zcg,curr_dat_q)
+
+  # adjust the pitching moment be about the true center of gravity
+  curr_dat_q$M_CG = curr_dat_q$Mm + ((curr_dat_q$FL*cosd(curr_dat_q$alpha)+curr_dat_q$D_adj_exp*sind(curr_dat_q$alpha))*(-curr_dat_q$xcg) +
+                             (curr_dat_q$FL*sind(curr_dat_q$alpha)-curr_dat_q$D_adj_exp*cosd(curr_dat_q$alpha))*(-curr_dat_q$zcg))
+
+  # Note this pitching moment is defined relative to the root chord
+  curr_dat_q$Cm_CG <- curr_dat_q$M_CG/(0.5*1.225*10^2*max(dat_num$S[which(dat_num$WingID == "17_0285")])*max(dat_num$root_c_max[which(dat_num$WingID == "17_0285")]))
+
+  curr_dat_q_ind = as.data.frame(matrix(NA,nrow=100,ncol=9))
+  names(curr_dat_q_ind) = c("species","WingID","TestID","FrameID","alpha","elbow","manus","CL_q","Cm_q")
+  
+  # Iterate through each Wing
+
+  for (i in 1:length(unique(curr_dat_q$FrameID))){
+    # subset the data to the current Frame
+    curr_dat = subset(curr_dat_q, FrameID == unique(curr_dat_q$FrameID)[i])
+    
+    # skip if not enough 
+    if(nrow(curr_dat) < 4){next
+      count_q = count_q + 1}
+    
+    mod_CL_q <- lm(CL_adj ~ q + alpha, data = curr_dat)
+    mod_Cm_q <- lm(Cm_CG ~ q + alpha, data = curr_dat)
+    
+    curr_dat_q_ind$species[count_q] <- as.character(curr_dat$species[1])
+    curr_dat_q_ind$WingID[count_q]  <- curr_dat$WingID[1]
+    curr_dat_q_ind$TestID[count_q]  <- curr_dat$TestID[1]
+    curr_dat_q_ind$FrameID[count_q] <- curr_dat$FrameID[1]
+    curr_dat_q_ind$alpha[count_q]   <- unique(curr_dat1$alpha)[j]
+    curr_dat_q_ind$elbow[count_q]   <- curr_dat$elbow[1]
+    curr_dat_q_ind$manus[count_q]   <- curr_dat$manus[1]
+    curr_dat_q_ind$sweep[count_q]   <- uni_shoulder$sweep[k]
+    curr_dat_q_ind$dihedral[count_q]<- uni_shoulder$dihedral[k]
+    
+    curr_dat_q_ind$CL_q[count_q]      <- coefficients(mod_CL_q)["q"]
+    curr_dat_q_ind$Cm_q[count_q]      <- coefficients(mod_Cm_q)["q"]
+    curr_dat_q_ind$CL_q_R2[count_q]   <- summary(mod_CL_q)$r.squared
+    curr_dat_q_ind$Cm_q_R2[count_q]   <- summary(mod_Cm_q)$r.squared
+    curr_dat_q_ind$no_sample[count_q] <- nrow(curr_dat)
+    count_q = count_q + 1
+  }
+  
+  ## ----------------------------------------------------------- 
+  ## -------------------- Save output data ---------------------
+  ## -----------------------------------------------------------
+  
+  write.csv(coef_all,paste('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/',filename,sep=""))
 }
 
+coef_all = as.data.frame(matrix(0,nrow = 2, ncol = 7))
+colnames(coef_all) <- c("y.model","intercept","elbow","manus","elbowmanus",
+                        "sweep","dihedral")
+
+# remove the incomplete cases
+curr_dat_q_ind <- curr_dat_q_ind[complete.cases(curr_dat_q_ind[,7]),]
+
+# ------ Step 2d: dCL/dq data ------
+# This method assumes that there is no affect of angle of attack on dCL/dq
+mod_CL_q_ind <- lm(CL_q ~ elbow*manus + sweep + dihedral, data = curr_dat_q_ind)
+
+coef_all$y.model[1]    = "dCLdq"
+coef_all$intercept[1]  = coef(mod_CL_q_ind)["(Intercept)"]
+coef_all$elbow[1]      = coef(mod_CL_q_ind)["elbow"]
+coef_all$manus[1]      = coef(mod_CL_q_ind)["manus"]
+coef_all$elbowmanus[1] = coef(mod_CL_q_ind)["elbow:manus"]
+coef_all$sweep[1]      = coef(mod_CL_q_ind)["sweep"]
+coef_all$dihedral[1]   = coef(mod_CL_q_ind)["dihedral"]
+
+# ------ Step 2e: dCm/dq data ------
+# This method assumes that there is no affect of angle of attack on dCm/dq
+mod_Cm_q_ind <- lm(Cm_q ~ elbow*manus + sweep + dihedral, data = curr_dat_q_ind)
+
+coef_all$y.model[2]    = "dCmdq"
+coef_all$intercept[2]  = coef(mod_Cm_q_ind)["(Intercept)"]
+coef_all$elbow[2]      = coef(mod_Cm_q_ind)["elbow"]
+coef_all$manus[2]      = coef(mod_Cm_q_ind)["manus"]
+coef_all$elbowmanus[2] = coef(mod_Cm_q_ind)["elbow:manus"]
+coef_all$sweep[2]      = coef(mod_Cm_q_ind)["sweep"]
+coef_all$dihedral[2]   = coef(mod_Cm_q_ind)["dihedral"]
+
+## ----------------------------------------------------------- 
+## -------------------- Save output data ---------------------
+## -----------------------------------------------------------
+filename = paste(format(Sys.Date(), "%Y_%m_%d"),"_coefficients_q.csv",sep="")
+write.csv(coef_all,paste('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/',filename,sep=""))
+
+## ----------- Compare to the previous paper's tailless data -----------
+
+dat_iner_curr = dat_inertial
+
+mod_xcg <- lm(full_CGx_orgShoulder ~ elbow*manus + I(elbow^2) + I(elbow^3) +
+                I(manus^2)+ I(manus^3), dat_iner_curr)
+
+mod_zcg <- lm(full_CGz_orgShoulder ~ elbow*manus + I(elbow^2) + I(elbow^3) +
+                I(manus^2)+ I(manus^3), dat_iner_curr)
 
 dat_num$xcg = predict(mod_xcg,dat_num) # the origin must be at the shoulder joint!!
 dat_num$zcg = predict(mod_zcg,dat_num) # the origin must be at the shoulder joint!!
 
 dat_num$L_comp = dat_num$CL_adj # make sure that this is the correct lit coefficient to use to predict the drag in the next step
 dat_num$CD_adj_exp = predict(mod_CD,dat_num)
-dat_num$Cm_CG = dat_num$Cm_adj + ((dat_num$CL_adj*cosd(dat_num$alpha)+dat_num$CD_adj_exp*sind(dat_num$alpha))*(-dat_num$xcg) + 
-                                      (dat_num$CL_adj*sind(dat_num$alpha)-dat_num$CD_adj_exp*cosd(dat_num$alpha))*(-dat_num$zcg))
+dat_num$D_adj_exp  = (0.5*1.225*10^2*dat_num$S_max)*dat_num$CD_adj_exp
+dat_num$M_CG = dat_num$Mm + ((dat_num$FL*cosd(dat_num$alpha)+dat_num$D_adj_exp*sind(dat_num$alpha))*(-dat_num$xcg) + 
+                                           (dat_num$FL*sind(dat_num$alpha)-dat_num$D_adj_exp*cosd(dat_num$alpha))*(-dat_num$zcg))
+# include supplemental graph to compare the experimentally predicted drag to the MachUpX drag
+# non-dimensionalize
+dat_num$Cm_CG = dat_num$M_CG/(0.5*1.225*10^2*dat_num$S_max*dat_num$root_c_max)
 
 # to show that the speed is not a significant effect on the model prediction - can verify from the two speeds tested in tunnel
 mod_CD_check <- lm(CD_true ~ elbow*manus + L_comp + I(L_comp^2) + I(elbow^2) + I(manus^2) + U_des, data = subset(dat_exp, alpha > -5 & alpha < 5))
