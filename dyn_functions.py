@@ -6,8 +6,8 @@ import aero_functions as aerofn
 from scipy.integrate import odeint
 
 
-def solve_linsys(m, Iyy, rho, S, c, elbow, manus, alpha_0, V_e, theta_rad, aero_data):
-    # Caution: theta_0 is in rad and alpha_0 is in deg
+def solve_linsys(m, Iyy, rho, S, c, elbow, manus, sw, di, alpha_0, V_e, theta_rad, aero_data, coef_q_data):
+    # Caution: theta_rad is in rad and alpha_0 is in deg
     # Collect all necessary aerodynamic coefficients
     CL = aerofn.get_CL(aero_data, elbow, manus, alpha_0)
     CD = aerofn.get_CD(aero_data, elbow, manus, CL)
@@ -15,11 +15,11 @@ def solve_linsys(m, Iyy, rho, S, c, elbow, manus, alpha_0, V_e, theta_rad, aero_
     # Collect all angle of attack derivatives
     CL_alp = aerofn.get_dCL_dalp(aero_data, elbow, manus, alpha_0)
     CD_alp = aerofn.get_dCD_dalp(aero_data, elbow, manus, CL, CL_alp)
-    Cm_alp = aerofn.get_dCm_dalp(aero_data, elbow, manus, CL_alp)
+    Cm_alp = aerofn.get_dCm_dCL(aero_data, elbow, manus)*CL_alp
 
     # Collect all pitch rate derivatives
-    CL_q = aerofn.get_dCL_dq(aero_data, elbow, manus)
-    Cm_q = aerofn.get_dCm_dq(aero_data, elbow, manus)
+    CL_q = aerofn.get_dCL_dq(coef_q_data, elbow, manus, sw, di)
+    Cm_q = aerofn.get_dCm_dq(coef_q_data, elbow, manus, sw, di)
 
     # define common constants
     alpha_rad = np.deg2rad(alpha_0)
@@ -77,25 +77,25 @@ def solve_linsys(m, Iyy, rho, S, c, elbow, manus, alpha_0, V_e, theta_rad, aero_
 
         writer = csv.writer(res_file)
         eignum = 1
-        writer.writerow([date_adj, alpha_0, V_e, elbow, manus, Iyy, theta_rad, eignum, damp[0], freq[0],
+        writer.writerow([date_adj, alpha_0, V_e, elbow, manus, sw, di, Iyy, theta_rad, eignum, damp[0], freq[0],
                          eig_val[0].real, eig_val[0].imag, mag[0], mag[1], mag[2], mag[3],
                          phase[0], phase[1], phase[2], phase[3],
-                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, trim[0], trim[1], Cm])
+                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, trim, Cm])
         eignum = 2
-        writer.writerow([date_adj, alpha_0, V_e, elbow, manus, Iyy, theta_rad, eignum, damp[0], freq[0],
+        writer.writerow([date_adj, alpha_0, V_e, elbow, manus, sw, di, Iyy, theta_rad, eignum, damp[0], freq[0],
                          eig_val[1].real, eig_val[1].imag, mag[4], mag[5], mag[6], mag[7],
                          phase[4], phase[5], phase[6], phase[7],
-                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, trim[0], trim[1], Cm])
+                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, trim, Cm])
         eignum = 3
-        writer.writerow([date_adj, alpha_0, V_e, elbow, manus, Iyy, theta_rad, eignum, damp[1], freq[1],
+        writer.writerow([date_adj, alpha_0, V_e, elbow, manus, sw, di, Iyy, theta_rad, eignum, damp[1], freq[1],
                          eig_val[2].real, eig_val[2].imag, mag[8], mag[9], mag[10], mag[11],
                          phase[8], phase[9], phase[10], phase[11],
-                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, trim[0], trim[1], Cm])
+                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, trim, Cm])
         eignum = 4
-        writer.writerow([date_adj, alpha_0, V_e, elbow, manus, Iyy, theta_rad, eignum, damp[1], freq[1],
+        writer.writerow([date_adj, alpha_0, V_e, elbow, manus, sw, di, Iyy, theta_rad, eignum, damp[1], freq[1],
                          eig_val[3].real, eig_val[3].imag, mag[12], mag[13], mag[14], mag[15],
                          phase[12], phase[13], phase[14], phase[15],
-                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, trim[0], trim[1], Cm])
+                         CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, trim, Cm])
 
     return A
 
