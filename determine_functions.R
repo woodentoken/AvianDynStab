@@ -1,26 +1,29 @@
 library(lme4)
 library(pracma)
 source("support_functions.R")
+
+## --------------- Load aerodynamic data with no tail and 0 shoulder angle -------------
 # saved after running analyse_llt.R and analyze_expresults.R - no changes
 load("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/aerodynamic_data.RData")
+## --------------- Load all inertial results -------------
 #saved after running process_outputdata.R
 load("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/inertial_data.RData")
 
-# determine the root chord from the previous 
+## --------------- Load all wing shapes -------------
 dat_all <- read.csv('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/2020_05_25_OrientedWings.csv', 
                     stringsAsFactors = FALSE,strip.white = TRUE, na.strings = c("") )
 dat_all <- subset(dat_all, species == "lar_gla" & sweep == 0 & dihedral == 0)
-dat_all$root_c = sqrt((dat_all$Pt12X - dat_all$Pt11X)^2 + (dat_all$Pt12Z - dat_all$Pt11Z)^2)
-dat_all$FrameID <- paste("F", dat_all$frameID, sep = "")
-
-dat_num = merge(dat_num,dat_all[,c("species","FrameID","TestID","WingID","elbow","manus","root_c")], by = c("species","FrameID","TestID","WingID","elbow","manus"))
-
+dat_all$root_c  = sqrt((dat_all$Pt12X - dat_all$Pt11X)^2 + (dat_all$Pt12Z - dat_all$Pt11Z)^2)
+dat_all$FrameID = paste("F", dat_all$frameID, sep = "")
+dat_num         = merge(dat_num,dat_all[,c("species","FrameID","TestID","WingID","elbow","manus","root_c")], 
+                        by = c("species","FrameID","TestID","WingID","elbow","manus"))
+# determine the root chord from the previous 
 dat_num$root_c_max <- 0
 dat_num$root_c_max[which(dat_num$WingID == "17_0285")] = max(dat_num$root_c[which(dat_num$WingID == "17_0285")])
 dat_num$root_c_max[which(dat_num$WingID == "17_0243")] = max(dat_num$root_c[which(dat_num$WingID == "17_0243")])
 dat_num$root_c_max[which(dat_num$WingID == "16_0048")] = max(dat_num$root_c[which(dat_num$WingID == "16_0048")])
 
-
+## --------------- Load the shoulder angle specific runs -------------
 # load the MachUpX Outputs for the new runs with tails
 dat_shoulder <- read.csv("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/Outputs_MachUpX/2021_10_22_List_ConvergedWingsShoulder_Sw-10_Di10.csv",
                      header=FALSE)
@@ -28,7 +31,12 @@ tmp1 <- read.csv("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_Dy
                 header=FALSE)
 tmp2 <- read.csv("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/Outputs_MachUpX/2021_10_30_List_ConvergedWingsShoulder.csv",
                  header=FALSE)
-dat_shoulder <- rbind(dat_shoulder,tmp1,tmp2)
+tmp3 <- read.csv("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/Outputs_MachUpX/2021_11_01_List_ConvergedWingsShoulder.csv",
+                 header=FALSE)
+tmp4 <- read.csv("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/Outputs_MachUpX/2021_11_03_List_ConvergedWingsShoulder.csv",
+                 header=FALSE)
+tmp4 <- tmp4[,1:27]
+dat_shoulder <- rbind(dat_shoulder,tmp1,tmp2,tmp3,tmp4)
 names(dat_shoulder) <- c("species","WingID","TestID","FrameID","sweep","dihedral","elbow","manus","alpha",
                          "U","build_err_max","date","S","ref_c","b_MX","MAC","b",
                          "tip_sweep","tip_dihedral","twist",'relax',
@@ -52,8 +60,6 @@ dat_shoulder <- rbind(dat_shoulder,tmp)
 dat_tail_all <- read.csv('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/2021_10_13_dyn_subsamplewings.csv', 
                          stringsAsFactors = FALSE,strip.white = TRUE, na.strings = c("") )
 
-remove(tmp,tmp1,tmp2) # clean up
-
 # need to adjust the lift to be a function of the same known paramters about the inertial bird
 
 for (i in 1:nrow(dat_shoulder)){
@@ -67,9 +73,14 @@ dat_shoulder$elbow_scale = dat_shoulder$elbow/1000
 dat_shoulder$manus_scale = dat_shoulder$manus/1000
 dat_shoulder$alpha_scale = dat_shoulder$alpha/10
 
-# load the Q derivative specific runs - NEED TO DECIDE IF THIS NEEDS TO BE RE-RUN FOR EACH SHOULDER...
+## --------------- Load the q specific runs -------------
+
+# load the q derivative specific runs - NEED TO DECIDE IF THIS NEEDS TO BE RE-RUN FOR EACH SHOULDER...
 dat_q <- read.csv("/Volumes/GoogleDrive/My Drive/DoctoralThesis/Chapter3_DynamicStability/Outputs_MachUpX/2021_11_01_List_ConvergedWingsShoulder_q.csv",
                   header = FALSE)
+tmp <- read.csv("/Volumes/GoogleDrive/My Drive/DoctoralThesis/Chapter3_DynamicStability/Outputs_MachUpX/2021_11_03_List_ConvergedWingsShoulder_q.csv",
+                  header = FALSE)
+dat_q <- rbind(tmp,dat_q)
 names(dat_q) <- c("species","WingID","TestID","FrameID","sweep","dihedral","elbow","manus","alpha",
                   "U","build_err_max","date","S","ref_c","b_MX","MAC","b",
                   "tip_sweep","tip_dihedral","twist",'relax',
@@ -82,6 +93,11 @@ dat_q$L_comp = dat_q$CL_adj
 curr_dat_q_ind = as.data.frame(matrix(NA,nrow=1000,ncol=13))
 names(curr_dat_q_ind) = c("species","WingID","TestID","FrameID","elbow","manus","sweep","dihedral","CL_q","Cm_q","CL_q_R2","Cm_q_R2","no_sample")
 count_q = 1
+
+
+remove(tmp,tmp1,tmp2,tmp3,tmp4) # clean up work envionment
+
+
 ## ---------------------------------------------
 ## ------------- Inertia Data ------------------
 ## ---------------------------------------------
@@ -350,6 +366,11 @@ for (k in 1:nrow(uni_shoulder)){
   ## ----------------------------------------------------------- 
   ## -------------------- Save output data ---------------------
   ## -----------------------------------------------------------
+  if (k == 1){
+    dat_shoulder_all = dat_aero_curr
+  }else{
+    dat_shoulder_all = rbind(dat_shoulder_all, dat_aero_curr)
+  }
   
   write.csv(coef_all,paste('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/coefficients/',filename,sep=""))
 }

@@ -1,11 +1,8 @@
 library(ggplot2)
-library(alphahull) # need for the convex hull
-library(ptinpoly)  # need for determining points outside the convex hull
 library(gridExtra) # for using grid arrange
 library(cowplot)   # need for plot_grid()
 library(ggthemes)  # need for geom_rangeframe
-library(pracma)
-source("support_functions.R")
+
 # -------- Main theme ------------
 th <- theme_classic() +
   theme(
@@ -59,76 +56,29 @@ cc_elbow <- c("70" = cc_full[36],
              "160" = "black",
              "170" = "black")
 
-
-# ------------ Read in data ---------------
-#Note that this does not include the wing shapes from the inertial gull
-dat_all <- read.csv('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/2020_05_25_OrientedWings.csv', stringsAsFactors = FALSE,strip.white = TRUE, na.strings = c("") )
-dat_all <- subset(dat_all, species == "lar_gla" & sweep == 0 & dihedral == 0)
-
-dat_out <- read.csv('LongDynStability_Rigid.csv')
-S_max = 0.244657  # wings and body reference area from the gull used in inertial study
-c_max = 0.2861011  # wing root chord from the gull used in inertial study
-
-# ------------ Clean data ---------------
-
-# remove the unattainable configurations
-tmp     <- cut_trueshape(dat_out,unique(subset(dat_all, elbow > 85 & manus > 100)[4:5]),4,5) # cut elbow and wrist to the true shape of the data
-dat_cut <- tmp$dat_cut
-dat_cut <- subset(dat_cut, abs(trim_m) <0.0001)
-
-dat_cut$halft  = 0.69/abs(dat_cut$eig_real) # captures the rate of decay
-dat_cut$period = 2*pi/dat_cut$omega_n
-
-# Set the pitch rate as the comparable phase 
-dat_cut$phase1 = dat_cut$phase1 - dat_cut$phase3
-dat_cut$phase2 = dat_cut$phase2 - dat_cut$phase3
-dat_cut$phase3 = dat_cut$phase3 - dat_cut$phase3
-dat_cut$phase4 = dat_cut$phase4 - dat_cut$phase3
-# adjust negative numbers to be in a positive frame
-dat_cut$phase1[which(dat_cut$phase1 < 0)] = (2*pi) + dat_cut$phase1[which(dat_cut$phase1 < 0)]
-dat_cut$phase2[which(dat_cut$phase2 < 0)] = (2*pi) + dat_cut$phase2[which(dat_cut$phase2 < 0)]
-dat_cut$phase3[which(dat_cut$phase3 < 0)] = (2*pi) + dat_cut$phase3[which(dat_cut$phase3 < 0)]
-dat_cut$phase4[which(dat_cut$phase4 < 0)] = (2*pi) + dat_cut$phase4[which(dat_cut$phase4 < 0)]
-
-
-dat_sp <- subset(dat_cut, eignum == 1 & omega_n > 0) # eigen num == 2 just flips phase
-dat_ph <- subset(dat_cut, eignum == 3 & omega_n > 0) # eigen num == 2 just flips phase
-# need to make sure that the configurations that are unstable in sp mode are removed here as well
-dat_ph <- merge(dat_sp[,c("alpha","elbow","manus")], subset(dat_cut, eignum == 3 & omega_n > 0)) # eignum == 4 just flips phase
 ## ------------- Plot the key trim parameters -------------------
-
 plot_trim <- ggplot() + 
   #add data
-  geom_point(data = subset(dat_cut, eignum == 1 & abs(trim_m) <0.0001), 
-             aes(x = Ve, y = theta0*180/pi, col = alpha)) + 
+  geom_point(data = subset(dat_cut, eignum == 1), 
+             aes(x = U0, y = (gamma0*180/pi + alpha), col = elbow)) + 
   #theme control
   th +
   scale_color_gradientn(colours = cc_full, name = lab_elbow) + 
   # axis control 
-  scale_x_continuous(limits = c(10,25), breaks = c(10,15,20,25), name = "Trim flight speed (m/s)") +
-  scale_y_continuous(limits = c(-50,0), breaks = c(-45,-30,-15,0), name = "Trim glide angle (deg)") +
+  scale_x_continuous(limits = c(0,35), breaks = c(0,5,10,15,20,25,30), name = "Trim flight speed (m/s)") +
+  scale_y_continuous(limits = c(-52,0), breaks = c(-50,-25,0), name = "Trim pitch angle (°)") +
   geom_rangeframe() +
-  annotate(geom = "segment", x = 10, xend = 25, y = log(0), yend = log(0)) +
-  annotate(geom = "segment", x = log(0), xend = log(0), y = -45, yend = 0)
-
-# These numbers are from the determine_functions.R:
-# max(dat_inertial$span)*0.5*0.461
-# min(dat_inertial$span)*0.5*0.461
-max(abs(asind(subset(dat_cut,alpha==alp_fixed)$del_x/0.1980852)))
-max(abs(asind(subset(dat_cut,alpha==alp_fixed)$del_z/0.1980852)))
-
-max(abs(asind(subset(dat_cut,alpha==alp_fixed)$del_x/0.345567)))
-max(abs(asind(subset(dat_cut,alpha==alp_fixed)$del_z/0.345567)))
+  annotate(geom = "segment", x = 0, xend = 30, y = log(0), yend = log(0)) +
+  annotate(geom = "segment", x = log(0), xend = log(0), y = -50, yend = 0)
 
 plot_clcd <- ggplot() + 
   #add data
-  geom_raster(data = subset(dat_cut,eignum == 1), 
-             aes(x = elbow, y = manus, fill = 0.5*1.225*Ve^2*S_max*c_max*trim_m), 
+  geom_tile(data = subset(dat_cut,eignum == 1), 
+             aes(x = elbow, y = manus, fill = sm), 
              alpha = 0.6) + 
-  geom_contour(data = subset(dat_cut,alpha==alp_fixed & eignum == 1), 
-              aes(x = elbow, y = manus, z = 0.5*1.225*Ve^2*S_max*c_max*Cm, colour = ..level..), 
+  geom_contour(data = subset(dat_cut,eignum == 1), 
+              aes(x = elbow, y = manus, z = sm, colour = ..level..), 
               alpha = 1, size = 1, breaks = c(-0.8,-0.6,-0.4,-0.2,0)) + 
-
   #theme control
   th +
   scale_fill_gradient2(low = "#025650", mid = "white",high = "#866727", midpoint = 0, name = "NP shift (m)") +
@@ -191,7 +141,7 @@ locus_sp <- ggplot() +
   scale_x_continuous(name = "Real") +
   scale_y_continuous(name = "Imaginary") + 
   # add data
-  geom_point(data = subset(dat_cut,alpha==alp_fixed & eignum < 3), 
+  geom_point(data = subset(dat_cut,eignum < 3), 
              aes(x = eig_real, y = eig_imag, col = elbow)) +
   scale_shape_manual(values = c(16,16,2,2))
 
@@ -234,7 +184,7 @@ locus_ph <- ggplot() +
   scale_x_continuous(name = "Real") +
   scale_y_continuous(name = "Imaginary") + 
   # add data
-  geom_point(data = subset(dat_cut,alpha==alp_fixed & eignum > 2), 
+  geom_point(data = subset(dat_cut,eignum > 2), 
              aes(x = eig_real, y = eig_imag, col = elbow)) +
   scale_shape_manual(values = c(16,16,2,2))
 
@@ -243,7 +193,7 @@ locus_ph <- ggplot() +
 
 # short period mode - Frequency
 plot_sp_o <- ggplot() + 
-  geom_point(data = subset(dat_cut,alpha==alp_fixed & eignum == 1), 
+  geom_point(data = subset(dat_cut,eignum == 1), 
              aes(x = manus, y = omega_n, col = elbow)) + 
   th +
   # colour control
@@ -263,7 +213,7 @@ plot_sp_o <- plot_sp_o + theme(legend.position = 'none')
 
 # short period mode - Damping
 plot_sp_z <- ggplot() + 
-  geom_point(data = subset(dat_cut,alpha==alp_fixed & eignum == 1), 
+  geom_point(data = subset(dat_cut,eignum == 1), 
              aes(x = manus, y = zeta, col = elbow)) + 
   # theme control
   th +
@@ -280,9 +230,8 @@ plot_sp_z <- ggplot() +
 
 # phugoid mode - Frequency
 plot_ph_o <- ggplot() + 
-  geom_point(data = subset(dat_cut,alpha==alp_fixed & eignum == 3), 
+  geom_point(data = subset(dat_cut,eignum == 3), 
              aes(x = manus, y = omega_n, col = elbow)) + 
-
   # theme control
   th +
   theme(legend.position = 'none') +
@@ -297,7 +246,7 @@ plot_ph_o <- ggplot() +
 
 # phugoid mode - Damping
 plot_ph_z <- ggplot() + 
-  geom_point(data = subset(dat_cut,alpha==alp_fixed & eignum == 3), 
+  geom_point(data = subset(dat_cut,eignum == 3), 
              aes(x = manus, y = zeta, col = elbow)) + 
   # theme control
   th +
@@ -429,11 +378,11 @@ plot_fig3 <- plot_grid(plot_sp_magphase,plot_ph_magphase,
 
 
 ## ------------------ Time response to an initial alpha -------------------
-dat_time_1 <- read.csv('./outputdata/2021_08_06_elbow90_manus120_alpha2_dalp.csv', header = FALSE)
+dat_time_1 <- read.csv('./outputdata/2021_11_04_elbow90_manus120_sw-10_di20_dalp.csv', header = FALSE)
 colnames(dat_time_1) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_2 <- read.csv('./outputdata/2021_08_06_elbow120_manus120_alpha2_dalp.csv', header = FALSE)
+dat_time_2 <- read.csv('./outputdata/2021_11_04_elbow120_manus120_sw-10_di20_dalp.csv', header = FALSE)
 colnames(dat_time_2) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_3 <- read.csv('./outputdata/2021_08_06_elbow120_manus157_alpha2_dalp.csv', header = FALSE)
+dat_time_3 <- read.csv('./outputdata/2021_11_04_elbow120_manus150_sw-10_di20_dalp.csv', header = FALSE)
 colnames(dat_time_3) <- c("t","del_u","del_alp","del_q","del_theta")
 
 lim_u     = c(-0.05,0.05)
@@ -445,15 +394,15 @@ break_theta = c(-8,-4,0,4,8)
 plot_time1_dalp <- plot_timeseries(dat_time_1,
                                    col_u,col_alpha,col_q,col_theta,
                                    lim_u,lim_alpha,lim_q,lim_theta, 
-                                   break_q, break_theta, 60)
+                                   break_q, break_theta, 10)
 plot_time2_dalp <- plot_timeseries(dat_time_2,
                                    col_u,col_alpha,col_q,col_theta,
                                    lim_u,lim_alpha,lim_q,lim_theta, 
-                                   break_q, break_theta, 60)
+                                   break_q, break_theta, 10)
 plot_time3_dalp <- plot_timeseries(dat_time_3,
                                    col_u,col_alpha,col_q,col_theta,
                                    lim_u,lim_alpha,lim_q,lim_theta, 
-                                   break_q, break_theta, 60)
+                                   break_q, break_theta, 10)
 
 plot_fig4 <- plot_grid(plot_time1_dalp,plot_time2_dalp,plot_time3_dalp,
                        #arrangement data
@@ -472,11 +421,11 @@ break_q = c(-1,-0.5,0,0.5,1)
 lim_theta = c(-10,0)
 break_theta = c(-10,-5,0)
 
-dat_time_4 <- read.csv('./outputdata/2021_08_06_elbow90_manus120_alpha2_uramp.csv', header = FALSE)
+dat_time_4 <- read.csv('./outputdata/2021_11_03_elbow90_manus120_uramp.csv', header = FALSE)
 colnames(dat_time_4) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_5 <- read.csv('./outputdata/2021_08_06_elbow120_manus120_alpha2_uramp.csv', header = FALSE)
+dat_time_5 <- read.csv('./outputdata/2021_11_03_elbow120_manus120_uramp.csv', header = FALSE)
 colnames(dat_time_5) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_6 <- read.csv('./outputdata/2021_08_06_elbow120_manus157_alpha2_uramp.csv', header = FALSE)
+dat_time_6 <- read.csv('./outputdata/2021_11_03_elbow120_manus157_uramp.csv', header = FALSE)
 colnames(dat_time_6) <- c("t","del_u","del_alp","del_q","del_theta")
 
 plot_time4_dalp <- plot_timeseries(dat_time_4,
