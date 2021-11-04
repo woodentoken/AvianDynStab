@@ -26,39 +26,41 @@ def trim_aero(W, rho, S, elbow, manus, aero_data):
     # Step 5: Estimate the drag at this lift
     CD = get_CD(aero_data, elbow, manus, CL)
 
-    # Step 6: Solve the force equations for speed (Ve) and glide angle in radians (theta) at this angle of attack
+    # Step 6: Solve the force equations for speed (Ve) and flight path angle in radians (gamma) at this angle of attack
+    # CAUTION: Flight path angle (gamma_rad) is the angle between the horizon and the velocity vector
+    # i.e. gamma_rad = theta_rad - alpha_rad
     force_guess = np.array([10, 0*np.pi/180])
     force_sol = opt.minimize(trim_force, force_guess,
-                           args=(W, rho, S, CL, CD, alpha_rad))
+                           args=(W, rho, S, CL, CD))
 
     # EARLY EXIT: make sure this result actually solved for an equilibrium
     if abs(force_sol.fun) > 10e-6:
         force_guess = np.array([15, -5 * np.pi / 180])
         force_sol = opt.minimize(trim_force, force_guess,
-                                 args=(W, rho, S, CL, CD, alpha_rad))
+                                 args=(W, rho, S, CL, CD))
         if abs(force_sol.fun) > 10e-6:
             force_guess = np.array([20, -10 * np.pi / 180])
             force_sol = opt.minimize(trim_force, force_guess,
-                                     args=(W, rho, S, CL, CD, alpha_rad))
+                                     args=(W, rho, S, CL, CD))
             if abs(force_sol.fun) > 10e-6:
                 force_guess = np.array([25, -5 * np.pi / 180])
                 force_sol = opt.minimize(trim_force, force_guess,
-                                         args=(W, rho, S, CL, CD, alpha_rad))
+                                         args=(W, rho, S, CL, CD))
                 if abs(force_sol.fun) > 10e-6:
                     force_guess = np.array([25, -30 * np.pi / 180])
                     force_sol = opt.minimize(trim_force, force_guess,
-                                             args=(W, rho, S, CL, CD, alpha_rad))
+                                             args=(W, rho, S, CL, CD))
                     if abs(force_sol.fun) > 10e-6:
                         return "NA", "NA", "NA"
 
     # Step 7: Save outputs
     # Note: These constraints are used in the solving which is why the numbers are saved like this
     V_e = abs(force_sol.x[0])
-    theta_rad = -abs(force_sol.x[1])
-    if theta_rad < -0.5*np.pi:
-        theta_rad = -0.5*np.pi
+    gamma_rad = -abs(force_sol.x[1])
+    if gamma_rad < -0.5*np.pi:
+        gamma_rad = -0.5*np.pi
 
-    return theta_rad, V_e, alpha_0
+    return gamma_rad, V_e, alpha_0
 
 
 def get_CL(aero_data, elbow, manus, alpha_0):
@@ -145,18 +147,18 @@ def min_geo_angle(x, Cm, CL, CD, alpha, c_root):
     return out
 
 
-def trim_force(x, W, rho, S, CL, CD, alpha_rad):
+def trim_force(x, W, rho, S, CL, CD):
     V = abs(x[0])
-    theta_rad = -abs(x[1])
+    gamma_rad = -abs(x[1])
 
-    if theta_rad < -0.5*np.pi:
-        theta_rad = -0.5*np.pi
+    if gamma_rad < -0.5*np.pi:
+        gamma_rad = -0.5*np.pi
 
     F = np.empty(2)
     # x direction forces
-    F[0] = (0.5 * rho * V ** 2 * S * (CL * np.sin(alpha_rad) - CD * np.cos(alpha_rad))) - W * np.sin(theta_rad)
+    F[0] = - (0.5 * rho * V ** 2 * S * CD) - W * np.sin(gamma_rad)
     # z direction forces
-    F[1] = (0.5 * rho * V ** 2 * S * (-CL * np.cos(alpha_rad) - CD * np.sin(alpha_rad))) + W * np.cos(theta_rad)
+    F[1] = - (0.5 * rho * V ** 2 * S * CL) + W * np.cos(gamma_rad)
 
     return F[0]**2+F[1]**2
 

@@ -30,7 +30,7 @@ date_adj = today.strftime("%Y_%m_%d")
 
 with open((date_adj+'_LongDynStability_Rigid.csv'), 'w', newline='') as res_file:
     writer = csv.writer(res_file)
-    writer.writerow(['date', 'alpha', 'Ve', 'elbow', 'manus', 'sweep', 'dihedral', 'Iyy', 'theta0',
+    writer.writerow(['date', 'alpha', 'U0', 'elbow', 'manus', 'sweep', 'dihedral', 'Iyy', 'gamma0',
                      'eignum', 'zeta', 'omega_n',
                      'eig_real', 'eig_imag', 'mag1', 'mag2', 'mag3', 'mag4',
                      'phase1', 'phase2', 'phase3', 'phase4',
@@ -50,14 +50,14 @@ for sw in sweep_test:
                 Iyy = dynfn.get_Iyy(elbow, manus, coef_data)
 
                 # Step 2: Calculate the trim flight path angle and speed for steady gliding flight
-                theta_rad, V_e, alpha_0 = aerofn.trim_aero(W, rho, S_max, elbow, manus, coef_data)
+                gamma_rad, V_e, alpha_0 = aerofn.trim_aero(W, rho, S_max, elbow, manus, coef_data)
 
                 if V_e == "NA":
                     continue
 
                 # Step 2: Solve the homogenous eigen problem
                 A = dynfn.solve_linsys(m, Iyy, rho, S_max, c_max, elbow, manus, sw, di, alpha_0, V_e,
-                                       theta_rad, coef_data, coef_q_data)
+                                       gamma_rad, coef_data, coef_q_data)
 
                 # initialize to not compute time series unless specified
                 compute = False
@@ -67,27 +67,36 @@ for sw in sweep_test:
                     compute = True
                 if e == 120 and w == 120:
                     compute = True
-                if e == 120 and w == 157:
-                        compute = True
+                if e == 120 and w == 150:
+                    compute = True
+
                 if compute:
+                    # --------------------------------------------------------------------
                     # Step 3: Extract the free response of the system wrt d_alp
-                    x0 = [0, 5 * np.pi / 180, 0, 0]
-                    out = dynfn.calc_res_dalp(x0, 60, 6000, A)
-
+                    x0 = [0, 2 * np.pi / 180, 0, 0]     # initial condition
+                    length_t = 60                       # total time saved
+                    timesteps = 6000                    # amount of steps s.t. dt = timesteps/length_t
+                    # solve for time response
+                    out = dynfn.calc_res_dalp(x0, length_t, timesteps, A)
+                    # save outputs
                     filename = "outputdata/" + \
-                                date_adj + "_elbow" + str(elbow) + "_manus" + str(manus) + "_dalp.csv"
+                                date_adj + "_elbow" + str(elbow) + "_manus" + str(manus) + \
+                               "_sw" + str(sw) + "_di" + str(di) + "_dalp.csv"
                     np.savetxt(filename, out, delimiter=",")
-
+                    # --------------------------------------------------------------------
                     # Step 4: Extract the time response of the system wrt ramped up speed
-                    x0 = [0, 0, 0, 0]
-                    B = np.asarray([0, 0.05, 0, 0])   # time dependent portion of the forced response
-                    C = np.asarray([0, 0, 0, 0])  # constant in time portion of the forced response
-
-                    ramp_end = 30  # seconds
-                    length_t = 120
-                    out = dynfn.calc_res_uramp(x0, length_t, ramp_end*200, A, B, C, ramp_end)
-
+                    x0 = [0, 0, 0, 0]                   # initial condition
+                    u_ramp = 0.01                       # change in the velocity divided by total velocity (1%)
+                    B = np.asarray([u_ramp, 0, 0, 0])   # time dependent portion of the forced response
+                    C = np.asarray([0, 0, 0, 0])        # constant in time portion of the forced response
+                    ramp_end = 5                        # seconds until time dependent part stops
+                    length_t = 60                       # total time saved
+                    timesteps = ramp_end*1200           # amount of steps s.t. dt = timesteps/length_t
+                    # solve for time response
+                    out = dynfn.calc_res_uramp(x0, length_t, timesteps, A, B, C, ramp_end)
+                    # save outputs
                     filename = "outputdata/" + \
-                                date_adj + "_elbow" + str(elbow) + "_manus" + str(manus) + "_uramp.csv"
+                                date_adj + "_elbow" + str(elbow) + "_manus" + str(manus) + \
+                               "_sw" + str(sw) + "_di" + str(di) + "_uramp.csv"
                     np.savetxt(filename, out, delimiter=",")
-
+                    # --------------------------------------------------------------------
