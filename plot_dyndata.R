@@ -378,12 +378,7 @@ plot_fig3 <- plot_grid(plot_sp_magphase,plot_ph_magphase,
 
 
 ## ------------------ Time response to an initial alpha -------------------
-dat_time_1 <- read.csv('./outputdata/2021_11_04_elbow90_manus120_sw-10_di20_dalp.csv', header = FALSE)
-colnames(dat_time_1) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_2 <- read.csv('./outputdata/2021_11_04_elbow120_manus120_sw-10_di20_dalp.csv', header = FALSE)
-colnames(dat_time_2) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_3 <- read.csv('./outputdata/2021_11_04_elbow120_manus150_sw-10_di20_dalp.csv', header = FALSE)
-colnames(dat_time_3) <- c("t","del_u","del_alp","del_q","del_theta")
+
 
 lim_u     = c(-0.05,0.05)
 lim_alpha = c(-5,5)
@@ -412,7 +407,7 @@ plot_fig4 <- plot_grid(plot_time1_dalp,plot_time2_dalp,plot_time3_dalp,
                        label_size = 10,
                        label_fontfamily = "sans")
 
-
+## ------------------ Time response to a ramped speed -------------------
 
 lim_u     = c(0,0.25)
 lim_alpha = c(-0.01,0.01)
@@ -420,13 +415,6 @@ lim_q     = c(-1,1)
 break_q = c(-1,-0.5,0,0.5,1)
 lim_theta = c(-10,0)
 break_theta = c(-10,-5,0)
-
-dat_time_4 <- read.csv('./outputdata/2021_11_03_elbow90_manus120_uramp.csv', header = FALSE)
-colnames(dat_time_4) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_5 <- read.csv('./outputdata/2021_11_03_elbow120_manus120_uramp.csv', header = FALSE)
-colnames(dat_time_5) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_6 <- read.csv('./outputdata/2021_11_03_elbow120_manus157_uramp.csv', header = FALSE)
-colnames(dat_time_6) <- c("t","del_u","del_alp","del_q","del_theta")
 
 plot_time4_dalp <- plot_timeseries(dat_time_4,
                                    col_u,col_alpha,col_q,col_theta,

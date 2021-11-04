@@ -366,10 +366,15 @@ for (k in 1:nrow(uni_shoulder)){
   ## ----------------------------------------------------------- 
   ## -------------------- Save output data ---------------------
   ## -----------------------------------------------------------
+  dat_stab_adj$sweep    = uni_shoulder$sweep[k]
+  dat_stab_adj$dihedral = uni_shoulder$dihedral[k]
+  
   if (k == 1){
     dat_shoulder_all = dat_aero_curr
+    dat_stab_all     = dat_stab_adj
   }else{
     dat_shoulder_all = rbind(dat_shoulder_all, dat_aero_curr)
+    dat_stab_all     = rbind(dat_stab_all, dat_stab_adj)
   }
   
   write.csv(coef_all,paste('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/coefficients/',filename,sep=""))
@@ -409,6 +414,11 @@ coef_all$dihedral[2]   = coef(mod_Cm_q_ind)["dihedral"]
 ## -----------------------------------------------------------
 filename = paste(format(Sys.Date(), "%Y_%m_%d"),"_coefficients_q.csv",sep="")
 write.csv(coef_all,paste('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/coefficients/',filename,sep=""))
+
+## ----------- SPIE abstract info ------------
+
+mod_cm0_all <- lm(cm0 ~ elbow + manus + dihedral + sweep, data = dat_stab_all)
+mod_cmcl_all <- lm(cmcl ~ elbow*manus + dihedral + sweep, data = dat_stab_all)
 
 ## ----------- Compare to the previous paper's tailless data -----------
 
