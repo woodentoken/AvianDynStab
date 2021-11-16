@@ -60,8 +60,6 @@ dat_shoulder <- rbind(dat_shoulder,tmp)
 dat_tail_all <- read.csv('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/2021_10_13_dyn_subsamplewings.csv', 
                          stringsAsFactors = FALSE,strip.white = TRUE, na.strings = c("") )
 
-# need to adjust the lift to be a function of the same known paramters about the inertial bird
-
 for (i in 1:nrow(dat_shoulder)){
   dat_shoulder$S_max[i]      = max(dat_num$S_max[which(dat_num$WingID == dat_shoulder$WingID[i])])
   dat_shoulder$root_c_max[i] = max(dat_num$root_c_max[which(dat_num$WingID == dat_shoulder$WingID[i])])
@@ -85,23 +83,17 @@ names(dat_q) <- c("species","WingID","TestID","FrameID","sweep","dihedral","elbo
                   "U","build_err_max","date","S","ref_c","b_MX","MAC","b",
                   "tip_sweep","tip_dihedral","twist",'relax',
                   "CL","CD","Cm","FL","FD","Mm","q")
-# note that the wings ran for the q derivatives are only from 17_0285
-dat_q$CL_adj = dat_q$FL/(0.5*1.225*10^2*max(dat_num$S[which(dat_num$WingID == "17_0285")]))
-dat_q$L_comp = dat_q$CL_adj
 
 # pre-define
 curr_dat_q_ind = as.data.frame(matrix(NA,nrow=1000,ncol=13))
 names(curr_dat_q_ind) = c("species","WingID","TestID","FrameID","elbow","manus","sweep","dihedral","CL_q","Cm_q","CL_q_R2","Cm_q_R2","no_sample")
 count_q = 1
 
-
-remove(tmp,tmp1,tmp2,tmp3,tmp4) # clean up work envionment
-
+remove(tmp,tmp1,tmp2,tmp3,tmp4) # clean up work environment
 
 ## ---------------------------------------------
 ## ------------- Inertia Data ------------------
 ## ---------------------------------------------
-#  !! CAUTION: INCLUDE NOTE IN PAPER THAT I EFFECTIVELY AM EXTRAPOLATING THE INERTIAL RESULS INTO HIGHER ELBOW AND WRIST ANGLES
 
 # subset to the same range as used in the aerodynamic data
 dat_inertial = subset(dat_final,species == "lar_gla" & elbow >= 85 & manus >= 105)
@@ -116,60 +108,37 @@ max(dat_inertial$c_max) # root chord approximation - calculated in the same mann
 uni_shoulder = unique(dat_shoulder[,c("sweep","dihedral")])
 count = 1 # initialize
 
-coef_all = as.data.frame(matrix(0,nrow = 5, ncol = 24))
-colnames(coef_all) <- c("y.model",
-                        "intercept","elbow","manus","elbow2","manus2",
-                        "elbow3","manus3","elbowmanus",
-                        "alpha","alpha2","alpha3",
-                        "elbowalpha","manusalpha","elbowmanusalpha",
-                        "CL","CL2","CL3",
-                        "elbowCL","manusCL","elbowmanusCL",
-                        "elbowCL2","manusCL2")
-
-## This next step is constant for all shoulder and dihedral angles as we are making a small angle approximation that
-# drag is minimally affected by this motion.
-
 # ------ Step 0: CD data ------
 # need to fit to experimental data due to the reduced - following same adjustment as the lift in analyse_exp.R
 dat_exp$CD_true     <- dat_exp$D_comp/(0.5*max(dat_num$S[which(dat_num$WingID == "17_0285")]))
 
 # minor changes in the coefficients between speeds, will group them
 # interactive terms were non-significant leave them out
+
+# Constant for all shoulder and dihedral angles as we are making a small angle 
+# approximation that drag is minimally affected by this motion.
+
+# CAUTION: this model predicts the drag based on input coefficient of lift
+
 mod_CD <- lm(CD_true ~ elbow + manus + L_comp + I(L_comp^2) + I(L_comp^3) + 
                elbow:I(L_comp^2) + manus:I(L_comp^2) + 
                elbow:L_comp + manus:L_comp, data = dat_exp)
 
-coef_all$y.model[5]    = "CD"
-coef_all$intercept[5]  = coef(mod_CD)["(Intercept)"]
-coef_all$elbow[5]      = coef(mod_CD)["elbow"]
-coef_all$manus[5]      = coef(mod_CD)["manus"]
-coef_all$CL[5]         = coef(mod_CD)["L_comp"]
-coef_all$CL2[5]        = coef(mod_CD)["I(L_comp^2)"]
-coef_all$CL3[5]        = coef(mod_CD)["I(L_comp^3)"]
-coef_all$elbowCL[5]      = coef(mod_CD)["elbow:L_comp"]
-coef_all$manusCL[5]      = coef(mod_CD)["manus:L_comp"]
-coef_all$elbowCL2[5]      = coef(mod_CD)["elbow:I(L_comp^2)"]
-coef_all$manusCL2[5]      = coef(mod_CD)["manus:I(L_comp^2)"]
-
-# use this model to predict the drag based on input lift
-## CAUTION MAY WANT TO ADJUST THIS TO JUST READ IN THE DRAG OF THE SPECIFIC CONFIGURATION
-### --- REVIEW THIS ----
 dat_shoulder$L_comp     = dat_shoulder$CL_adj # make sure that this is the correct lit coefficient to use to predict the drag in the next step
 dat_shoulder$CD_adj_exp = predict(mod_CD,dat_shoulder)
 dat_shoulder$D_adj_exp  = (0.5*1.225*10^2*dat_shoulder$S_max)*dat_shoulder$CD_adj_exp
 
-# Calculate the estimated drag for the derivatives as well
+# Calculate the estimated drag for the q derivatives as well
+dat_q$CL_adj = dat_q$FL/(0.5*1.225*10^2*max(dat_num$S[which(dat_num$WingID == "17_0285")])) # note that the wings ran for the q derivatives are only from 17_0285
+dat_q$L_comp     = dat_q$CL_adj
 dat_q$CD_adj_exp = predict(mod_CD,dat_q)
-dat_q$D_adj_exp = (0.5*1.225*10^2*max(dat_num$S[which(dat_num$WingID == "17_0285")]))*dat_q$CD_adj_exp
+dat_q$D_adj_exp  = (0.5*1.225*10^2*max(dat_num$S[which(dat_num$WingID == "17_0285")]))*dat_q$CD_adj_exp
 
 ## -------------------------------------------------
 ## ----- Iterate through shoulder positions --------
 ## -------------------------------------------------
 
 for (k in 1:nrow(uni_shoulder)){
-  
-  # save the given shoulder angle
-  filename = paste(format(Sys.Date(), "%Y_%m_%d"),"_coefficients_sw",uni_shoulder$sweep[k],"_di",uni_shoulder$dihedral[k],".csv",sep="")
   
   ## -------------------------------------------------
   ## ---------- Step 1: Inertial Data ----------------
@@ -178,21 +147,7 @@ for (k in 1:nrow(uni_shoulder)){
   # adjust all the key inertial metrics to account for the given shoulder angle
   dat_iner_curr <- adjust_inertia(uni_shoulder$sweep[k],uni_shoulder$dihedral[k],dat_inertial)
   
-  # ------ Step 1a: Iyy ------ 
-  mod_inertia <- lm(full_Iyy_adj ~ elbow*manus + I(elbow^2) + I(elbow^3) +
-                      I(manus^2) + I(manus^3), dat_iner_curr)
-  
-  coef_all$y.model[1]    = "Iyy"
-  coef_all$intercept[1]  = coef(mod_inertia)["(Intercept)"]
-  coef_all$elbow[1]      = coef(mod_inertia)["elbow"]
-  coef_all$manus[1]      = coef(mod_inertia)["manus"]
-  coef_all$elbow2[1]     = coef(mod_inertia)["I(elbow^2)"]
-  coef_all$elbow3[1]     = coef(mod_inertia)["I(elbow^3)"]
-  coef_all$manus2[1]     = coef(mod_inertia)["I(manus^2)"]
-  coef_all$manus3[1]     = coef(mod_inertia)["I(manus^3)"]
-  coef_all$elbowmanus[1] = coef(mod_inertia)["elbow:manus"]
-  
-  # ------ Step 1b: CG --------
+  # ------ CG --------
   ## need to fit model to the full_CGx_orgShoulder to allow Cm to be adjusted appropriately.
   ## fit a seperate model for each sweep and dihedral config
   mod_xcg <- lm(full_CGx_orgShoulder_adj ~ elbow*manus + I(elbow^2) + I(elbow^3) +
@@ -209,30 +164,7 @@ for (k in 1:nrow(uni_shoulder)){
   dat_aero_curr = subset(dat_shoulder, 
                          sweep == uni_shoulder$sweep[k] & dihedral == uni_shoulder$dihedral[k])
   
-  # ------ Step 2a: CL data ------
-  # scaling was elbow/1000 manus/1000 alpha/10
-  # If I want to input the true values into this same model I instead
-  # need to divide each coefficient by however many inputs are being changed
-  mod_CL <- lm(CL_adj ~ elbow_scale*manus_scale*alpha_scale + I(alpha_scale^2) + I(alpha_scale^3) + 
-                   I(elbow_scale^2) + 
-                   I(manus_scale^2) + I(manus_scale^3), data = subset(dat_aero_curr,alpha < 5))
-  
-  coef_all$y.model[3]    = "CL"
-  coef_all$intercept[3]  = coef(mod_CL)["(Intercept)"]
-  coef_all$elbow[3]      = coef(mod_CL)["elbow_scale"]/1000
-  coef_all$manus[3]      = coef(mod_CL)["manus_scale"]/1000
-  coef_all$elbow2[3]     = coef(mod_CL)["I(elbow_scale^2)"]/(1000^2)
-  coef_all$manus2[3]     = coef(mod_CL)["I(manus_scale^2)"]/(1000^2)
-  coef_all$manus3[3]     = coef(mod_CL)["I(manus_scale^3)"]/(1000^3)
-  coef_all$elbowmanus[3] = coef(mod_CL)["elbow_scale:manus_scale"]/(1000^2)
-  coef_all$alpha[3]      = coef(mod_CL)["alpha_scale"]/10
-  coef_all$alpha2[3]     = coef(mod_CL)["I(alpha_scale^2)"]/(10^2)
-  coef_all$alpha3[3]     = coef(mod_CL)["I(alpha_scale^3)"]/(10^3)
-  coef_all$elbowalpha[3] = coef(mod_CL)["elbow_scale:alpha_scale"]/(1000*10)
-  coef_all$manusalpha[3] = coef(mod_CL)["manus_scale:alpha_scale"]/(1000*10)
-  coef_all$elbowmanusalpha[3] = coef(mod_CL)["elbow_scale:manus_scale:alpha_scale"]/((1000^2)*10)
-  
-  # ------ Step 2b: Cm data ------
+  # ------ Cm data ------
   
   # need to adjust the moment to be calculated about the current xCG
   dat_aero_curr$xcg = predict(mod_xcg,dat_aero_curr) # the origin must be at the shoulder joint!!
@@ -245,75 +177,6 @@ for (k in 1:nrow(uni_shoulder)){
   # include supplemental graph to compare the experimentally predicted drag to the MachUpX drag
   # non-dimensionalize
   dat_aero_curr$Cm_CG = dat_aero_curr$M_CG/(0.5*1.225*10^2*dat_aero_curr$S_max*dat_aero_curr$root_c_max)
-  
-  mod_Cm <- lm(Cm_CG ~ elbow_scale*manus_scale*CL_adj +
-                   I(elbow_scale^2) + I(elbow_scale^3) + 
-                   I(manus_scale^2), data = subset(dat_aero_curr,alpha < 5))
-  
-  coef_all$y.model[4]    = "Cm"
-  coef_all$intercept[4]  = coef(mod_Cm)["(Intercept)"]
-  coef_all$elbow[4]      = coef(mod_Cm)["elbow_scale"]/1000
-  coef_all$manus[4]      = coef(mod_Cm)["manus_scale"]/1000
-  coef_all$elbow2[4]     = coef(mod_Cm)["I(elbow_scale^2)"]/(1000^2)
-  coef_all$elbow3[4]     = coef(mod_Cm)["I(elbow_scale^3)"]/(1000^3)
-  coef_all$manus2[4]     = coef(mod_Cm)["I(manus_scale^2)"]/(1000^2)
-  coef_all$elbowmanus[4] = coef(mod_Cm)["elbow_scale:manus_scale"]/(1000^2)
-  coef_all$CL[4]         = coef(mod_Cm)["CL_adj"]
-  coef_all$elbowCL[4]    = coef(mod_Cm)["elbow_scale:CL_adj"]/(1000)
-  coef_all$manusCL[4]    = coef(mod_Cm)["manus_scale:CL_adj"]/(1000)
-  coef_all$elbowmanusCL[4] = coef(mod_Cm)["elbow_scale:manus_scale:CL_adj"]/(1000^2)
-  
-  # ------ Step 2c: dCm/dCL data ------
-  
-  dat_wingspec <- unique(dat_aero_curr[c("WingID","TestID","FrameID",
-                                         "elbow","manus","species","twist",
-                                         "S_max","root_c_max",
-                                         "elbow_scale","manus_scale")])
-  no_testedconfigs = nrow(dat_wingspec)
-  dat_stab_adj  <- data.frame(matrix(NA, nrow = no_testedconfigs, ncol = 9))
-  names(dat_stab_adj) <- c("species","WingID","TestID","FrameID","elbow","manus",
-                           "cmcl","cm0","R2")
-  
-  # need to loop through all configurations to re-calculate the static margin
-  for (m in 1:no_testedconfigs){
-    # subset data to be of one wing configuration at a time and subset to only fit angles under 5deg
-    dat_curr <- subset(dat_aero_curr, 
-                       species == dat_wingspec$species[m] & WingID == dat_wingspec$WingID[m] & 
-                         TestID == dat_wingspec$TestID[m] & FrameID == dat_wingspec$FrameID[m] & alpha < 5)
-    
-    # save all wing specific information  
-    dat_stab_adj$species[m] <- as.character(dat_wingspec$species[m])
-    dat_stab_adj$WingID[m]  <- dat_wingspec$WingID[m]
-    dat_stab_adj$TestID[m]  <- dat_wingspec$TestID[m]
-    dat_stab_adj$FrameID[m] <- dat_wingspec$FrameID[m]
-    dat_stab_adj$elbow[m]   <- dat_wingspec$elbow[m]
-    dat_stab_adj$manus[m]   <- dat_wingspec$manus[m]
-    
-    if(nrow(dat_curr) < 4){next}
-    mod.pstab = lm(Cm_CG ~ CL_adj, data = dat_curr)
-    
-    dat_stab_adj$cm0[m]     <- summary(mod.pstab)$coefficients[1,1]
-    dat_stab_adj$cmcl[m]    <- summary(mod.pstab)$coefficients[2,1]
-    dat_stab_adj$R2[m]      <- summary(mod.pstab)$r.squared
-  }
-  # remove the incomplete cases
-  dat_stab_adj <- dat_stab_adj[complete.cases(dat_stab_adj[,7]),]
-  dat_stab_adj$elbow_scale <- dat_stab_adj$elbow/1000
-  dat_stab_adj$manus_scale <- dat_stab_adj$manus/1000
-  
-  mod_cmcl <- lm(cmcl ~ elbow_scale*manus_scale + 
-                     I(elbow_scale^2) + I(elbow_scale^3) +
-                     I(manus_scale^2) + I(manus_scale^3), data = dat_stab_adj)
-  
-  coef_all$y.model[2]    = "CmCL"
-  coef_all$intercept[2]  = coef(mod_cmcl)["(Intercept)"]
-  coef_all$elbow[2]      = coef(mod_cmcl)["elbow_scale"]/1000
-  coef_all$manus[2]      = coef(mod_cmcl)["manus_scale"]/1000
-  coef_all$elbow2[2]     = coef(mod_cmcl)["I(elbow_scale^2)"]/(1000^2)
-  coef_all$elbow3[2]     = coef(mod_cmcl)["I(elbow_scale^3)"]/(1000^3)
-  coef_all$manus2[2]     = coef(mod_cmcl)["I(manus_scale^2)"]/(1000^2)
-  coef_all$manus3[2]     = coef(mod_cmcl)["I(manus_scale^3)"]/(1000^3)
-  coef_all$elbowmanus[2] = coef(mod_cmcl)["elbow_scale:manus_scale"]/(1000^2)
   
   ## ----------------------------------------------------------- 
   ## ----------------- Pitch rate derivatives ------------------
@@ -334,7 +197,6 @@ for (k in 1:nrow(uni_shoulder)){
   curr_dat_q$Cm_CG <- curr_dat_q$M_CG/(0.5*1.225*10^2*max(dat_num$S[which(dat_num$WingID == "17_0285")])*max(dat_num$root_c_max[which(dat_num$WingID == "17_0285")]))
 
   # Iterate through each Wing
-
   for (i in 1:length(unique(curr_dat_q$FrameID))){
     # subset the data to the current Frame
     curr_dat = subset(curr_dat_q, FrameID == unique(curr_dat_q$FrameID)[i])
@@ -366,53 +228,125 @@ for (k in 1:nrow(uni_shoulder)){
   ## ----------------------------------------------------------- 
   ## -------------------- Save output data ---------------------
   ## -----------------------------------------------------------
-  dat_stab_adj$sweep    = uni_shoulder$sweep[k]
-  dat_stab_adj$dihedral = uni_shoulder$dihedral[k]
+  dat_iner_curr$sweep    = uni_shoulder$sweep[k]
+  dat_iner_curr$dihedral = uni_shoulder$dihedral[k]
   
   if (k == 1){
-    dat_shoulder_all = dat_aero_curr
-    dat_stab_all     = dat_stab_adj
+    dat_aero_all = dat_aero_curr
+    dat_iner_all = dat_iner_curr
   }else{
-    dat_shoulder_all = rbind(dat_shoulder_all, dat_aero_curr)
-    dat_stab_all     = rbind(dat_stab_all, dat_stab_adj)
+    dat_aero_all = rbind(dat_aero_all, dat_aero_curr)
+    dat_iner_all = rbind(dat_iner_all, dat_iner_curr)
   }
-  
-  write.csv(coef_all,paste('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/coefficients/',filename,sep=""))
 }
 
-coef_all = as.data.frame(matrix(0,nrow = 2, ncol = 7))
-colnames(coef_all) <- c("y.model","intercept","elbow","manus","elbowmanus",
-                        "sweep","dihedral")
+
+# ------ SAVE OUTPUT COEFFICIENTS ------
+
+coef_all = as.data.frame(matrix(0,nrow = 6, ncol = 22))
+colnames(coef_all) <- c("y.model",
+                        "intercept","elbow","manus","sweep","dihedral",
+                        "alpha","alpha2","alpha3",
+                        "elbowalpha","manusalpha","sweepalpha","dihedralalpha",
+                        "CL","CL2","CL3", 
+                        "elbowCL","manusCL","sweepCL","dihedralCL",
+                        "elbowCL2","manusCL2")
+
+# ------ Step 1a: Iyy data ------
+#  !! CAUTION: Maximum elbow = 152 and Max wrist = 167 in inertial data 
+# Must INCLUDE NOTE IN PAPER THAT I EFFECTIVELY AM EXTRAPOLATING THE INERTIAL RESULS INTO HIGHER ELBOW AND WRIST ANGLES
+mod_inertia <- lm(full_Iyy_adj ~ elbow + manus + sweep + dihedral, dat_iner_all)
+
+coef_all$y.model[1]         = "Iyy"
+coef_all$intercept[1]       = coef(mod_inertia)["(Intercept)"]
+coef_all$elbow[1]           = coef(mod_inertia)["elbow"]
+coef_all$manus[1]           = coef(mod_inertia)["manus"]
+coef_all$sweep[1]           = coef(mod_inertia)["sweep"]
+coef_all$dihedral[1]        = coef(mod_inertia)["dihedral"]
+
+# ------ Step 2a: CL data ------
+# scaling was elbow/1000 manus/1000 alpha/10
+# If I want to input the true values into this same model I instead
+# need to divide each coefficient by however many inputs are being changed
+mod_CL <- lm(CL_adj ~ elbow_scale + manus_scale + sweep + dihedral +
+               alpha_scale + I(alpha_scale^2) + I(alpha_scale^3) +
+               elbow_scale:alpha_scale + manus_scale:alpha_scale +
+               sweep:alpha_scale + dihedral:alpha_scale, data = subset(dat_aero_all,alpha < 5))
+
+coef_all$y.model[2]       = "CL"
+coef_all$intercept[2]     = coef(mod_CL)["(Intercept)"]
+coef_all$elbow[2]         = coef(mod_CL)["elbow_scale"]/1000
+coef_all$manus[2]         = coef(mod_CL)["manus_scale"]/1000
+coef_all$sweep[2]         = coef(mod_CL)["sweep"]
+coef_all$dihedral[2]      = coef(mod_CL)["dihedral"]
+coef_all$alpha[2]         = coef(mod_CL)["alpha_scale"]/10
+coef_all$alpha2[2]        = coef(mod_CL)["I(alpha_scale^2)"]/(10^2)
+coef_all$alpha3[2]        = coef(mod_CL)["I(alpha_scale^3)"]/(10^3)
+coef_all$elbowalpha[2]    = coef(mod_CL)["elbow_scale:alpha_scale"]/(1000*10)
+coef_all$manusalpha[2]    = coef(mod_CL)["manus_scale:alpha_scale"]/(1000*10)
+coef_all$sweepalpha[2]    = coef(mod_CL)["sweep:alpha_scale"]/(1000*10)
+coef_all$dihedralalpha[2] = coef(mod_CL)["dihedral:alpha_scale"]/(1000*10)
+
+# ------ Step 2b: CD data ------
+
+coef_all$y.model[3]   = "CD"
+coef_all$intercept[3] = coef(mod_CD)["(Intercept)"]
+coef_all$elbow[3]     = coef(mod_CD)["elbow"]
+coef_all$manus[3]     = coef(mod_CD)["manus"]
+coef_all$CL[3]        = coef(mod_CD)["L_comp"]
+coef_all$CL2[3]       = coef(mod_CD)["I(L_comp^2)"]
+coef_all$CL3[3]       = coef(mod_CD)["I(L_comp^3)"]
+coef_all$elbowCL[3]   = coef(mod_CD)["elbow:L_comp"]
+coef_all$manusCL[3]   = coef(mod_CD)["manus:L_comp"]
+coef_all$elbowCL2[3]  = coef(mod_CD)["elbow:I(L_comp^2)"]
+coef_all$manusCL2[3]  = coef(mod_CD)["manus:I(L_comp^2)"]
+
+# ------ Step 2c: Cm data ------
+mod_Cm <- lm(Cm_CG ~ elbow_scale + manus_scale + sweep + dihedral +
+               CL_adj + elbow_scale:CL_adj + manus_scale:CL_adj +
+               sweep:CL_adj + dihedral:CL_adj, data = subset(dat_aero_all,alpha < 5))
+
+coef_all$y.model[4]       = "Cm"
+coef_all$intercept[4]     = coef(mod_Cm)["(Intercept)"]
+coef_all$elbow[4]         = coef(mod_Cm)["elbow_scale"]/1000
+coef_all$manus[4]         = coef(mod_Cm)["manus_scale"]/1000
+coef_all$sweep[4]         = coef(mod_Cm)["sweep"]
+coef_all$dihedral[4]      = coef(mod_Cm)["dihedral"]
+coef_all$CL[4]            = coef(mod_Cm)["CL_adj"]
+coef_all$elbowCL[4]       = coef(mod_Cm)["elbow_scale:CL_adj"]/(1000)
+coef_all$manusCL[4]       = coef(mod_Cm)["manus_scale:CL_adj"]/(1000)
+coef_all$sweepCL[4]       = coef(mod_Cm)["sweep:CL_adj"]/(1000)
+coef_all$dihedralCL[4]    = coef(mod_Cm)["dihedral:CL_adj"]/(1000)
 
 # remove the incomplete cases
 curr_dat_q_ind <- curr_dat_q_ind[complete.cases(curr_dat_q_ind[,7]),]
 
 # ------ Step 2d: dCL/dq data ------
-# This method assumes that there is no affect of angle of attack on dCL/dq
+# This method assumes that there is no effect of angle of attack on dCL/dq
 mod_CL_q_ind <- lm(CL_q ~ elbow + manus + sweep + dihedral, data = curr_dat_q_ind)
 
-coef_all$y.model[1]    = "dCLdq"
-coef_all$intercept[1]  = coef(mod_CL_q_ind)["(Intercept)"]
-coef_all$elbow[1]      = coef(mod_CL_q_ind)["elbow"]
-coef_all$manus[1]      = coef(mod_CL_q_ind)["manus"]
-coef_all$sweep[1]      = coef(mod_CL_q_ind)["sweep"]
-coef_all$dihedral[1]   = coef(mod_CL_q_ind)["dihedral"]
+coef_all$y.model[5]    = "dCLdq"
+coef_all$intercept[5]  = coef(mod_CL_q_ind)["(Intercept)"]
+coef_all$elbow[5]      = coef(mod_CL_q_ind)["elbow"]
+coef_all$manus[5]      = coef(mod_CL_q_ind)["manus"]
+coef_all$sweep[5]      = coef(mod_CL_q_ind)["sweep"]
+coef_all$dihedral[5]   = coef(mod_CL_q_ind)["dihedral"]
 
 # ------ Step 2e: dCm/dq data ------
-# This method assumes that there is no affect of angle of attack on dCm/dq
+# This method assumes that there is no effect of angle of attack on dCm/dq
 mod_Cm_q_ind <- lm(Cm_q ~ elbow + manus + sweep + dihedral, data = curr_dat_q_ind)
 
-coef_all$y.model[2]    = "dCmdq"
-coef_all$intercept[2]  = coef(mod_Cm_q_ind)["(Intercept)"]
-coef_all$elbow[2]      = coef(mod_Cm_q_ind)["elbow"]
-coef_all$manus[2]      = coef(mod_Cm_q_ind)["manus"]
-coef_all$sweep[2]      = coef(mod_Cm_q_ind)["sweep"]
-coef_all$dihedral[2]   = coef(mod_Cm_q_ind)["dihedral"]
+coef_all$y.model[6]    = "dCmdq"
+coef_all$intercept[6]  = coef(mod_Cm_q_ind)["(Intercept)"]
+coef_all$elbow[6]      = coef(mod_Cm_q_ind)["elbow"]
+coef_all$manus[6]      = coef(mod_Cm_q_ind)["manus"]
+coef_all$sweep[6]      = coef(mod_Cm_q_ind)["sweep"]
+coef_all$dihedral[6]   = coef(mod_Cm_q_ind)["dihedral"]
 
 ## ----------------------------------------------------------- 
 ## -------------------- Save output data ---------------------
 ## -----------------------------------------------------------
-filename = paste(format(Sys.Date(), "%Y_%m_%d"),"_coefficients_q.csv",sep="")
+filename = paste(format(Sys.Date(), "%Y_%m_%d"),"_coefficients_all.csv",sep="")
 write.csv(coef_all,paste('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/coefficients/',filename,sep=""))
 
 ## ----------- SPIE abstract info ------------

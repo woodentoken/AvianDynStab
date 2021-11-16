@@ -185,7 +185,7 @@ adjust_inertia <- function(sweep,dihedral,dat_in){
   rot_sw[3,3] = 1
   
   new_wing_CGx1 = (rot_sw[1,1]*(shoulder_motion$wing_CGx-shoulder_motion$pt1_X) + rot_sw[1,2]*(shoulder_motion$wing_CGy-shoulder_motion$pt1_Y)) + shoulder_motion$pt1_X
-  new_wing_CGy1 = (rot_sw[1,1]*(shoulder_motion$wing_CGx-shoulder_motion$pt1_X) + rot_sw[2,2]*(shoulder_motion$wing_CGy-shoulder_motion$pt1_Y)) + shoulder_motion$pt1_Y
+  new_wing_CGy1 = (rot_sw[2,1]*(shoulder_motion$wing_CGx-shoulder_motion$pt1_X) + rot_sw[2,2]*(shoulder_motion$wing_CGy-shoulder_motion$pt1_Y)) + shoulder_motion$pt1_Y
   shoulder_motion$full_CGx_adj = (shoulder_motion$rest_m*shoulder_motion$rest_CGx + 2*shoulder_motion$wing_m*new_wing_CGx1)/shoulder_motion$full_m
   
   shoulder_motion$full_CGx_orgShoulder  = (shoulder_motion$full_CGx_adj-shoulder_motion$pt1_X)
@@ -206,16 +206,18 @@ adjust_inertia <- function(sweep,dihedral,dat_in){
   shoulder_motion$full_CGz_orgShoulder = (shoulder_motion$full_CGz_adj-shoulder_motion$pt1_Z)
   
   # Save the CG data to the main data frame 
-  dat_in$full_CGx_orgShoulder_adj = shoulder_motion$full_CGx_orgShoulder 
-  dat_in$full_CGz_orgShoulder_adj = shoulder_motion$full_CGz_orgShoulder 
+  dat_in$full_CGx_orgShoulder_adj = shoulder_motion$full_CGx_orgShoulder # Origin: humerus head
+  dat_in$full_CGz_orgShoulder_adj = shoulder_motion$full_CGz_orgShoulder # Origin: humerus head
+
+  dat_in$wing_CGx_adj = new_wing_CGx1 # Origin: VRP
+  dat_in$wing_CGy_adj = new_wing_CGy2 # Origin: VRP
+  dat_in$wing_CGz_adj = new_wing_CGz2 # Origin: VRP
+  # Note that the three above outputs are equivalent to: (rot_di)%*%(rot_sw)%*%(wing$CG-hum_head) + hum_head
   
-  dat_in$wing_CGx_adj = new_wing_CGx1
-  dat_in$wing_CGy_adj = new_wing_CGy2
-  dat_in$wing_CGz_adj = new_wing_CGz2
-  
-  dat_in$full_CGx_adj = shoulder_motion$full_CGx_adj
-  dat_in$full_CGz_adj = shoulder_motion$full_CGz_adj
-  
+  dat_in$full_CGx_adj = shoulder_motion$full_CGx_adj # Origin: VRP
+  dat_in$full_CGz_adj = shoulder_motion$full_CGz_adj # Origin: VRP
+
+
   ## ---------------------------- Moment of Inertia ----------------------------
   
   # first need to shift origin from the VRP to the shoulder joint
@@ -270,16 +272,19 @@ adjust_inertia <- function(sweep,dihedral,dat_in){
     rest$CG[2] = 0
     rest$CG[3] = (dat_in$full_m[i]*dat_in$full_CGz[i] - 2*(dat_in$wing_m[i]*dat_in$wing_CGz[i]))/rest$m
     
-    # Step 1: Shift the moment of inertia origin to the humeral head
+    # Step 1: Shift the moment of inertia origin to the wing CG and then the humeral head
     
     hum_head = c(dat_in$pt1_X[i],dat_in$pt1_Y[i],dat_in$pt1_Z[i])
     
     wing_rot = shift_Iorigin(wing$I,c(0,0,0),wing$CG,"A",wing$m,hum_head) # Output Origin: Humeral head
+    # Inputs = input_I,input_origin,input_CG,input_cg_or_a,input_m,new_origin
+    # Note that all distances should always be input within the VRP origin (i.e. CG measured from the VRP)
+    # In actuality all that matters is that it is the same origin but for simiplicity leave it as VRP
     
     # Step 2: Rotate the wing moment of inertia about the shoulder joint
     # Origin: Humeral head 
-    wing_rot$I_new  =  t(rot_di)%*%(t(rot_sw)%*%wing_rot$I%*%rot_sw)%*%rot_di
-    wing_rot$CG_new = c(dat_in$wing_CGx_adj[i], dat_in$wing_CGy_adj[i], dat_in$wing_CGz_adj[i])
+    wing_rot$I_new  = t(rot_di)%*%(t(rot_sw)%*%wing_rot$I%*%rot_sw)%*%rot_di
+    wing_rot$CG_new = c(dat_in$wing_CGx_adj[i], dat_in$wing_CGy_adj[i], dat_in$wing_CGz_adj[i]) # Origin: VRP
 
     # Step 3: Shift the wing moment of inertia to be about the new CG and then the VRP
     wing_rot_VRP = shift_Iorigin(wing_rot$I_new,hum_head,wing_rot$CG_new,"A",wing_rot$m,c(0,0,0)) # Origin: Output Full Bird VRP
