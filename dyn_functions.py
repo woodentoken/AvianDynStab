@@ -6,20 +6,20 @@ import aero_functions as aerofn
 from scipy.integrate import odeint
 
 
-def solve_linsys(m, Iyy, rho, S, c, elbow, manus, sw, di, alpha_0, U_0, gamma_rad, aero_data, coef_q_data):
+def solve_linsys(m, Iyy, rho, S, c, elbow, manus, sw, di, alpha_0, U_0, gamma_rad, aero_data):
     # Caution: theta_rad is in rad and alpha_0 is in deg
     # Collect all necessary aerodynamic coefficients
-    CL = aerofn.get_CL(aero_data, elbow, manus, alpha_0)
-    CD = aerofn.get_CD(aero_data, elbow, manus, CL)
+    CL = aerofn.get_CL(aero_data, elbow, manus, sw, di, alpha_0)
+    CD = aerofn.get_CD(aero_data, elbow, manus, alpha_0, CL)
 
     # Collect all angle of attack derivatives
-    CL_alp = aerofn.get_dCL_dalp(aero_data, elbow, manus, alpha_0)
-    CD_alp = aerofn.get_dCD_dalp(aero_data, elbow, manus, CL, CL_alp)
-    Cm_alp = aerofn.get_dCm_dCL(aero_data, elbow, manus)*CL_alp
+    CL_alp = aerofn.get_dCL_dalp(aero_data, elbow, manus, sw, di, alpha_0)
+    CD_alp = aerofn.get_dCD_dalp(aero_data, elbow, manus, alpha_0)
+    Cm_alp = aerofn.get_dCm_dCL(aero_data, elbow, manus, sw, di)*CL_alp
 
     # Collect all pitch rate derivatives
-    CL_q = aerofn.get_dCL_dq(coef_q_data, elbow, manus, sw, di)
-    Cm_q = aerofn.get_dCm_dq(coef_q_data, elbow, manus, sw, di)
+    CL_q = aerofn.get_dCL_dq(aero_data, elbow, manus, sw, di)
+    Cm_q = aerofn.get_dCm_dq(aero_data, elbow, manus, sw, di, CL_q)
 
     # define common constants
     m_til = rho*U_0*S/(2*m)
@@ -33,7 +33,7 @@ def solve_linsys(m, Iyy, rho, S, c, elbow, manus, sw, di, alpha_0, U_0, gamma_ra
                    -w_til*np.cos(gamma_rad)],
                   [2 * m_til * (-CL),
                    m_til * (-CL_alp - CD),
-                   (1-m_til*CL_q),
+                   (1-(m_til*CL_q)),
                    -w_til*np.sin(gamma_rad)],
                   [0, I_til * Cm_alp, I_til * Cm_q, 0],
                   [0, 0, 1, 0]])
@@ -69,7 +69,7 @@ def solve_linsys(m, Iyy, rho, S, c, elbow, manus, sw, di, alpha_0, U_0, gamma_ra
     date_adj = today.strftime("%Y_%m_%d")
     # just for saving purposes
     trim = aerofn.trim_force(np.array([U_0, gamma_rad]), m*9.81, rho, S, CL, CD)
-    Cm = aerofn.get_Cm(aero_data, elbow, manus, CL)
+    Cm = aerofn.get_Cm(aero_data, elbow, manus, sw, di, CL)
 
     # Save data
     with open((date_adj+'_LongDynStability_Rigid.csv'), 'a', newline="") as res_file:
@@ -120,11 +120,27 @@ def solve_IVP(A, x0, t, B=None, C=None, end=None, mod_type="free"):
     return x
 
 
-def get_Iyy(elbow, manus, coef_data):
-    Iyy = coef_data['elbow'][0] * elbow + coef_data['manus'][0] * manus + \
-          coef_data['elbow2'][0] * elbow ** 2 + coef_data['manus2'][0] * manus ** 2 + \
-          coef_data['elbow3'][0] * elbow ** 3 + coef_data['manus3'][0] * manus ** 3 + \
-          coef_data['elbowmanus'][0] * elbow * manus + coef_data['intercept'][0]
+def get_Iyy(elbow, manus, sweep, dihedral, coef_data):
+    Iyy = coef_data['intercept'][0] + \
+          coef_data['elbow'][0] * elbow + \
+          coef_data['manus'][0] * manus + \
+          coef_data['sweep'][0] * sweep + \
+          coef_data['dihedral'][0] * dihedral + \
+          coef_data['elbow2'][0] * elbow ** 2 + \
+          coef_data['manus2'][0] * manus ** 2 + \
+          coef_data['sweep2'][0] * sweep ** 2 + \
+          coef_data['dihedral2'][0] * dihedral ** 2 + \
+          coef_data['elbowmanus'][0] * elbow * manus + \
+          coef_data['elbowsweep'][0] * elbow * sweep + \
+          coef_data['manussweep'][0] * manus * sweep + \
+          coef_data['elbowdihedral'][0] * elbow * dihedral + \
+          coef_data['manusdihedral'][0] * manus * dihedral + \
+          coef_data['sweepdihedral'][0] * sweep * dihedral + \
+          coef_data['elbowmanussweep'][0] * elbow * manus * sweep + \
+          coef_data['elbowmanusdihedral'][0] * elbow * manus * dihedral + \
+          coef_data['elbowsweepdihedral'][0] * elbow * sweep * dihedral + \
+          coef_data['manussweepdihedral'][0] * manus * sweep * dihedral + \
+          coef_data['elbowmanussweepdihedral'][0] * elbow * manus * sweep * dihedral
 
     return Iyy
 

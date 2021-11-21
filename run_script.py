@@ -16,12 +16,11 @@ W = m * 9.81  # weight (N)
 S_max = 0.244657  # wings and body reference area
 c_max = 0.2861011  # wing root chord
 
-coef_q_data = pd.read_csv('/Volumes/GoogleDrive/My Drive/DoctoralThesis/Chapter3_DynamicStability/coefficients'
-                                '/2021_11_03_coefficients_q.csv')
+coef_data = pd.read_csv('/Volumes/GoogleDrive/My Drive/DoctoralThesis/Chapter3_DynamicStability/coefficients'
+                                '/2021_11_21_coefficients_all.csv')
 
-a_test = [-2, 0, 2, 4, 6]
-dihedral_test = [0, 10, 20]
-sweep_test = [-20, -10, 0, 10, 20]
+dihedral_test = [10, 15, 20]
+sweep_test = [-20, -15, -10, -5, 0, 5, 10]
 elbow_test = np.arange(86, 166, 2)
 manus_test = np.arange(106, 180, 2)
 
@@ -38,26 +37,23 @@ with open((date_adj+'_LongDynStability_Rigid.csv'), 'w', newline='') as res_file
 for sw in sweep_test:
     for di in dihedral_test:
 
-        coef_data = pd.read_csv('/Volumes/GoogleDrive/My Drive/DoctoralThesis/Chapter3_DynamicStability/coefficients'
-                                '/2021_11_03_coefficients_sw' + str(sw) + '_di' + str(di) + '.csv')
-
         for e in elbow_test:
             for w in manus_test:
 
                 # Step 1: Set morphological data
                 elbow = e
                 manus = w
-                Iyy = dynfn.get_Iyy(elbow, manus, coef_data)
+                Iyy = dynfn.get_Iyy(elbow, manus, sw, di, coef_data)
 
                 # Step 2: Calculate the trim flight path angle and speed for steady gliding flight
-                gamma_rad, V_e, alpha_0 = aerofn.trim_aero(W, rho, S_max, elbow, manus, coef_data)
+                gamma_rad, V_e, alpha_0 = aerofn.trim_aero(W, rho, S_max, elbow, manus, sw, di, coef_data)
 
                 if V_e == "NA":
                     continue
 
                 # Step 2: Solve the homogenous eigen problem
                 A = dynfn.solve_linsys(m, Iyy, rho, S_max, c_max, elbow, manus, sw, di, alpha_0, V_e,
-                                       gamma_rad, coef_data, coef_q_data)
+                                       gamma_rad, coef_data)
 
                 # initialize to not compute time series unless specified
                 compute = False
