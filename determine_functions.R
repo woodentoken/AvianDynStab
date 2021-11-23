@@ -471,9 +471,10 @@ dat_exp$Cm_CG = dat_exp$M_CG/(0.5*dat_exp$rho*dat_exp$U^2*0.5*max(dat_num$S_max[
 test <- subset(dat_num, FrameID == "F1380" | FrameID == "F2195" | FrameID == "F3891" | FrameID == "F4352" | FrameID == "F4546" | FrameID == "F4647" | FrameID == "F4849" | FrameID == "F4911" | FrameID == "F6003")
 
 # to show that the speed is not a significant effect on the model prediction - can verify from the two speeds tested in tunnel
-mod_CD_check <- lm(CD_true ~ elbow*manus + L_comp + I(L_comp^2) + I(elbow^2) + I(manus^2) + U_des, data = subset(dat_exp, alpha < 5))
-mod_Cm_check <- lm(Cm_CG ~ elbow*manus + L_comp + I(L_comp^2) + I(elbow^2) + I(manus^2) + U_des, data = subset(dat_exp, alpha < 5))
-mod_CL_check <- lm(L_comp ~ elbow*manus + alpha + I(alpha^2) + I(elbow^2) + I(manus^2) + U_des, data = subset(dat_exp, alpha < 5))
+# using -8 as this is the lowest that birds were able to trim at 
+mod_CD_check <- lm(CD_true ~ elbow*manus + L_comp + I(L_comp^2) + I(elbow^2) + I(manus^2) + U_des, data = subset(dat_exp,alpha > -8 & alpha < 5))
+mod_Cm_check <- lm(Cm_CG ~ elbow*manus + L_comp + I(L_comp^2) + I(elbow^2) + I(manus^2) + U_des, data = subset(dat_exp,alpha > -8 & alpha < 5))
+mod_CL_check <- lm(L_comp ~ elbow*manus + alpha + I(alpha^2) + I(elbow^2) + I(manus^2) + U_des, data = subset(dat_exp,alpha > -8 & alpha < 5))
 
 # use this to plot the estimated CmCL vs cmcl_true
 dat_aero_all$cmcl_direct <- coef_all$CL[4] + 

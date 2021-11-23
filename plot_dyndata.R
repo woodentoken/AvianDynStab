@@ -2,7 +2,10 @@ library(ggplot2)
 library(gridExtra) # for using grid arrange
 library(cowplot)   # need for plot_grid()
 library(ggthemes)  # need for geom_rangeframe
-
+library(ggalt)     # need for encircle
+library(ggstream)  # stream graph
+library(dplyr)
+library(tidyr)
 # -------- Main theme ------------
 th <- theme_classic() +
   theme(
@@ -27,6 +30,7 @@ blank_plot <- ggplot() + theme_void()
 
 lab_elbow      = "Elbow angle (°)"
 lab_manus      = "Wrist angle (°)"
+lab_sweep      = "Sweep angle (°)"
 lab_phase      = "Phase (°)"
 lab_clcd       = expression(paste("C" [L], "/C" [D]))
 
@@ -56,49 +60,155 @@ cc_elbow <- c("70" = cc_full[36],
              "160" = "black",
              "170" = "black")
 
+cc_sweep <- c("0" = "#BFBFFF",
+              "-5" = "#9999FF",
+              "-10" = "#6066C6",
+              "-15" = "#23388F",
+              "-20" = "#000F5C")
+
 ## ------------- Plot the key trim parameters -------------------
 plot_trim <- ggplot() + 
   #add data
   geom_point(data = subset(dat_cut, eignum == 1), 
-             aes(x = U0, y = (gamma0*180/pi + alpha), col = elbow)) + 
+             aes(x = U0, y = theta_0, col = manus)) + 
   #theme control
   th +
-  scale_color_gradientn(colours = cc_full, name = lab_elbow) + 
+  scale_fill_gradientn(colours = cc_full, name = lab_manus) + 
+  scale_color_gradientn(colours = cc_full, name = lab_manus) + 
+  scale_shape_manual(values = c(21,22,23,24,25), name = lab_manus) + 
   # axis control 
-  scale_x_continuous(limits = c(0,35), breaks = c(0,5,10,15,20,25,30), name = "Trim flight speed (m/s)") +
-  scale_y_continuous(limits = c(-52,0), breaks = c(-50,-25,0), name = "Trim pitch angle (°)") +
+  scale_x_continuous(limits = c(10,35), breaks = c(10,15,20,25,30), name = "Trim flight speed (m/s)") +
+  scale_y_continuous(limits = c(-53,0), breaks = c(-50,-25,0), name = "Trim pitch angle (°)") +
   geom_rangeframe() +
-  annotate(geom = "segment", x = 0, xend = 30, y = log(0), yend = log(0)) +
+  annotate(geom = "segment", x = 10, xend = 30, y = log(0), yend = log(0)) +
   annotate(geom = "segment", x = log(0), xend = log(0), y = -50, yend = 0)
 
-plot_clcd <- ggplot() + 
-  #add data
-  geom_tile(data = subset(dat_cut,eignum == 1), 
-             aes(x = elbow, y = manus, fill = sm), 
-             alpha = 0.6) + 
-  geom_contour(data = subset(dat_cut,eignum == 1), 
-              aes(x = elbow, y = manus, z = sm, colour = ..level..), 
-              alpha = 1, size = 1, breaks = c(-0.8,-0.6,-0.4,-0.2,0)) + 
-  #theme control
-  th +
-  scale_fill_gradient2(low = "#025650", mid = "white",high = "#866727", midpoint = 0, name = "NP shift (m)") +
-  scale_colour_gradient2(low = "#025650", mid = "white",high = "#866727", midpoint = 0, name = "NP shift (m)") +
-  # axis control 
-  coord_fixed() + 
-  scale_x_continuous(limits = c(85,170), breaks = c(90,120,150), name = lab_elbow) +
-  scale_y_continuous(limits = c(100,180), breaks = c(100,120,140,160,180), name = lab_manus) +
-  geom_rangeframe() +
-  annotate(geom = "segment", x = 90, xend = 150, y = log(0), yend = log(0)) +
-  annotate(geom = "segment", x = log(0), xend = log(0), y = 100, yend = 180) 
+# Prep data for the stream plots
+test <- as_tibble(subset(dat_cut, eignum == 1 & dihedral == 20))
+test$U0_r <- round(test$U0, digits = 0)
+test$theta_0_r <- round(test$theta_0, digits = 0)
 
-plot_fig1 <- plot_grid(blank_plot,plot_trim,plot_clcd,
+dat_U0_plot <- test %>%
+  group_by(U0_r, sweep, .drop=FALSE) %>%
+  summarise(count_man=length(unique(manus,elbow)))
+dat_U0_plot$sweep <- as.factor(dat_U0_plot$sweep)
+dat_U0_plot$count_man <- as.double(dat_U0_plot$count_man)
+
+dat_t0_plot <- test %>%
+  group_by(theta_0_r, sweep, .drop=FALSE) %>%
+  summarise(count_man=length(unique(manus,elbow)))
+dat_t0_plot$sweep <- as.factor(dat_t0_plot$sweep)
+dat_t0_plot$count_man <- as.double(dat_t0_plot$count_man)
+
+# ------ Speed stream -----
+plot_U0_stream <- ggplot()+
+  geom_stream(data = dat_U0_plot, aes(U0_r,count_man,fill = sweep))  + 
+  #colour control 
+  scale_fill_manual(values = cc_sweep, name = lab_sweep) + 
+  #theme
+  th +
+  # axis control 
+  scale_x_continuous(limits = c(10,35), breaks = c(10,15,20,25,30), name = "Trim flight speed (m/s)") +
+  scale_y_continuous(limits = c(-100,100), breaks = c(-30,-15,0,15,30), name = "Number of trimmed configurations") +
+  geom_rangeframe() +
+  annotate(geom = "segment", x = 10, xend = 30, y = log(0), yend = log(0)) +
+  annotate(geom = "segment", x = log(0), xend = log(0), y = -30, yend = 30)
+
+# ------ Pitch angle stream -----
+plot_t0_stream <- ggplot()+
+  # add data
+  geom_stream(data = dat_t0_plot, aes(theta_0_r, count_man,fill = sweep)) + 
+  #colour control 
+  scale_fill_manual(values = cc_sweep, name = lab_sweep) + 
+  #theme
+  th +
+  # axis control 
+  coord_flip()+
+  scale_x_continuous(limits = c(-53,0), breaks = c(-50,-25,0), name = "Trim pitch angle (°)") +
+  scale_y_continuous(limits = c(-100,100), breaks = c(-30,-15,0,15,30), name = "Number of trimmed configurations") +
+  geom_rangeframe() +
+  annotate(geom = "segment", x = 0, xend = -50, y = log(0), yend = log(0)) +
+  annotate(geom = "segment", x = log(0), xend = log(0), y = -30, yend = 30)
+
+plot_x <- ggplot() + 
+  #add data
+  geom_point(data = subset(dat_cut,eignum == 1 & sweep == -15), 
+             aes(x = xcg, y = elbow, col = manus), pch = 10, alpha = 0.9) +
+  geom_point(data = subset(dat_cut,eignum == 1 & sweep == -15), 
+            aes(x = xac, y = elbow, col = manus), pch = 15, alpha = 0.9) +
+  scale_color_gradientn(colours = cc_full, name = lab_manus) +
+  #theme
+  th +
+  # axis control 
+  scale_x_continuous(limits = c(0,0.1), breaks = seq(0,0.1,0.02), name = "-x (m)") +
+  scale_y_continuous(limits = c(80,150), breaks = seq(80,150,10), name = lab_elbow) +
+  geom_rangeframe() +
+  annotate(geom = "segment", x = 0, xend = 0.1, y = log(0), yend = log(0)) +
+  annotate(geom = "segment", x = log(0), xend = log(0), y = 80, yend = 150)
+
+plot_em <- ggplot() + 
+  #add data
+  geom_encircle(data = subset(dat_cut,eignum == 1 & cmcl < 0), 
+                aes(x = elbow, y = manus, fill = as.factor(sweep), col = as.factor(sweep)), alpha = 0.25, expand = -0.001) + 
+  geom_encircle(data = subset(dat_cut,eignum == 1 & cmcl > 0), 
+                aes(x = elbow, y = manus, col = as.factor(sweep)), expand = -0.001) + 
+  geom_jitter(data = subset(dat_cut,eignum == 1), 
+             aes(x = elbow, y = manus, col = as.factor(sweep), pch = as.factor(sign(cmcl))), alpha = 0.9,
+             width = 0.5, height = 0.5) +
+  #theme
+  th +
+  scale_fill_manual(values = cc_sweep, name = lab_sweep) + 
+  scale_colour_manual(values = cc_sweep, name = lab_sweep) + 
+  scale_shape_manual(values = c(15,0)) +
+  # axis control 
+  scale_x_continuous(limits = c(80,180), breaks = seq(80,170,10), name = lab_elbow) +
+  scale_y_continuous(limits = c(100,180), breaks = seq(100,180,10), name = lab_manus) +
+  geom_rangeframe() +
+  annotate(geom = "segment", x = 80, xend = 170, y = log(0), yend = log(0)) +
+  annotate(geom = "segment", x = log(0), xend = log(0), y = 100, yend = 180)
+
+
+plot_topleft <- plot_grid(plot_trim,plot_t0_stream,
                      #arrangement data
-                     ncol = 3,
-                     rel_widths = c(1,1,1),
+                     ncol = 2,
+                     rel_widths = c(1,1),
                      #labels
-                     labels = c("A","B","C"),
+                     labels = c("A","B"),
                      label_size = 10,
                      label_fontfamily = "sans")
+plot_botleft <- plot_grid(plot_U0_stream,blank_plot,
+                          #arrangement data
+                          ncol = 2,
+                          rel_widths = c(1,1),
+                          #labels
+                          labels = c("C",""),
+                          label_size = 10,
+                          label_fontfamily = "sans")
+plot_left <- plot_grid(plot_topleft,plot_botleft,
+                          #arrangement data
+                          nrow = 2,
+                          rel_widths = c(1,1),
+                          #labels
+                          labels = c("",""),
+                          label_size = 10,
+                          label_fontfamily = "sans")
+plot_right <- plot_grid(plot_x,plot_em, blank_plot,blank_plot,
+                       #arrangement data
+                       nrow = 2,
+                       rel_widths = c(1,1),
+                       #labels
+                       labels = c("D",""),
+                       label_size = 10,
+                       label_fontfamily = "sans")
+
+fig2_full <- plot_grid(plot_left,plot_right,
+                       #arrangement data
+                       ncol = 2,
+                       rel_widths = c(2,2),
+                       #labels
+                       labels = c("",""),
+                       label_size = 10,
+                       label_fontfamily = "sans")
 
 ## ------------ Plot the damping and frequency characteristics ------------------
 
@@ -138,16 +248,16 @@ locus_sp <- ggplot() +
   geom_rangeframe() +
   annotate(geom = "segment", x = -30, xend = 30, y = 0, yend = 0) +
   annotate(geom = "segment", x = 0, xend = 0, y = -30, yend = 30) +
+  annotate(geom = "rect", xmin = -1.25, xmax = 1.25, ymin = -1.25, ymax = 1.25, fill = NA, col = "black") +
   scale_x_continuous(name = "Real") +
   scale_y_continuous(name = "Imaginary") + 
   # add data
-  geom_point(data = subset(dat_cut,eignum < 3), 
-             aes(x = eig_real, y = eig_imag, col = elbow)) +
-  scale_shape_manual(values = c(16,16,2,2))
+  geom_point(data = subset(dat_cut, eignum < 3 & (sweep == -15 | sweep == -5)), 
+             aes(x = eig_real, y = eig_imag, col = manus, pch = as.factor(sweep)), alpha =0.9)
 
 # Define the axis ticks and associated labels
-axis_begin  = -5
-axis_end    = 5
+axis_begin  = -1.25
+axis_end    = 1.25
 total_ticks = 5
 tick_frame <- data.frame(ticks = seq(axis_begin, axis_end, length.out = total_ticks), zero=0)
 tick_frame <- subset(tick_frame, ticks != 0)
@@ -179,31 +289,31 @@ locus_ph <- ggplot() +
   geom_text(data=lab_frame, aes(x=zero, y=lab, label=lab),
             hjust=-0.5, size = 8*5/14, family = "sans") +
   geom_rangeframe() +
-  annotate(geom = "segment", x = -5, xend = 5, y = 0, yend = 0) +
-  annotate(geom = "segment", x = 0, xend = 0, y = -5, yend = 5) +
+  annotate(geom = "segment", x = axis_begin, xend = axis_end, y = 0, yend = 0) +
+  annotate(geom = "segment", x = 0, xend = 0, y = axis_begin, yend = axis_end) +
   scale_x_continuous(name = "Real") +
   scale_y_continuous(name = "Imaginary") + 
   # add data
-  geom_point(data = subset(dat_cut,eignum > 2), 
-             aes(x = eig_real, y = eig_imag, col = elbow)) +
-  scale_shape_manual(values = c(16,16,2,2))
+  geom_point(data = subset(dat_cut,eignum > 2 & (sweep == -15 | sweep == -5)), 
+             aes(x = eig_real, y = eig_imag, col = manus, pch = as.factor(sweep)), alpha =0.9) 
 
 
 ## ------------------- Plot damping and frequency results ----------------------
 
 # short period mode - Frequency
 plot_sp_o <- ggplot() + 
-  geom_point(data = subset(dat_cut,eignum == 1), 
-             aes(x = manus, y = omega_n, col = elbow)) + 
+  geom_point(data = subset(dat_cut,eignum == 1 & (sweep == -15 | sweep == -5)), 
+             aes(x = elbow, y = omega_n, col = manus, pch = as.factor(sweep))) + 
   th +
   # colour control
-  scale_color_gradientn(colours = cc_full, name = lab_elbow) + 
+  scale_color_gradientn(colours = cc_full, name = lab_manus) + 
   # axis control 
-  scale_x_continuous(limits = c(100,180), name = lab_manus) +
-  scale_y_continuous(limits = c(0,20), name = expression(paste(omega)["n"])) +
+  scale_x_continuous(limits = c(80,170), breaks = seq(80,170,10), name = lab_elbow) +
+  scale_y_continuous(limits = c(0,40), name = expression(paste(omega)["n"])) +
   geom_rangeframe() +
-  annotate(geom = "segment", x = 100, xend = 180, y = log(0), yend = log(0)) +
-  annotate(geom = "segment", x = log(0), xend = log(0), y = 0, yend = 20) + 
+  annotate(geom = "segment", x = 80, xend = 170, y = log(0), yend = log(0)) +
+  annotate(geom = "segment", x = log(0), xend = log(0), y = 0, yend = 40) + 
+  # use this segment for the "zoom in"
   annotate(geom = "segment", x = -log(0), xend = -log(0), y = 0, yend = 2)
 
 # Extract the legend to plot later
@@ -213,55 +323,58 @@ plot_sp_o <- plot_sp_o + theme(legend.position = 'none')
 
 # short period mode - Damping
 plot_sp_z <- ggplot() + 
-  geom_point(data = subset(dat_cut,eignum == 1), 
-             aes(x = manus, y = zeta, col = elbow)) + 
+  geom_point(data = subset(dat_cut,eignum == 1 & (sweep == -15 | sweep == -5)), 
+             aes(x = elbow, y = zeta, col = manus, pch = as.factor(sweep))) + 
+  geom_hline(yintercept = 0.35) + 
+  geom_hline(yintercept = 0.25) + 
   # theme control
   th +
   theme(legend.position = 'none') +
   # colour control
   scale_color_gradientn(colours = cc_full) + 
   # axis control 
-  scale_x_continuous(limits = c(100,180), name = lab_manus) +
+  scale_x_continuous(limits = c(80,170), breaks = seq(80,170,10), name = lab_elbow) +
   scale_y_continuous(limits = c(0,1), name = expression(paste(zeta))) +
   geom_rangeframe() +
-  annotate(geom = "segment", x = 100, xend = 180, y = log(0), yend = log(0)) +
+  annotate(geom = "segment", x = 80, xend = 170, y = log(0), yend = log(0)) +
   annotate(geom = "segment", x = log(0), xend = log(0), y = 0, yend = 1)
 
 
 # phugoid mode - Frequency
 plot_ph_o <- ggplot() + 
-  geom_point(data = subset(dat_cut,eignum == 3), 
-             aes(x = manus, y = omega_n, col = elbow)) + 
+  geom_point(data = subset(dat_cut,eignum == 3 & (sweep == -15 | sweep == -5)), 
+             aes(x = elbow, y = omega_n, col = manus, pch = as.factor(sweep))) + 
   # theme control
   th +
   theme(legend.position = 'none') +
   # colour control
   scale_color_gradientn(colours = cc_full) + 
   # axis control 
-  scale_x_continuous(limits = c(100,180), name = lab_manus) +
+  scale_x_continuous(limits = c(80,170), breaks = seq(80,170,10), name = lab_elbow) +
   scale_y_continuous(limits = c(0,2), name = expression(paste(omega)["n"])) +
   geom_rangeframe() +
-  annotate(geom = "segment", x = 100, xend = 180, y = log(0), yend = log(0)) +
+  annotate(geom = "segment", x = 80, xend = 170, y = log(0), yend = log(0)) +
   annotate(geom = "segment", x = log(0), xend = log(0), y = 0, yend = 2)
 
 # phugoid mode - Damping
 plot_ph_z <- ggplot() + 
-  geom_point(data = subset(dat_cut,eignum == 3), 
-             aes(x = manus, y = zeta, col = elbow)) + 
+  geom_point(data = subset(dat_cut,eignum == 3 & (sweep == -15 | sweep == -5)), 
+             aes(x = elbow, y = zeta, col = manus, pch = as.factor(sweep))) + 
+  geom_hline(yintercept = 0.04) + 
   # theme control
   th +
   theme(legend.position = 'none') +
   # colour control
   scale_color_gradientn(colours = cc_full) + 
   # axis control 
-  scale_x_continuous(limits = c(100,180), name = lab_manus) +
+  scale_x_continuous(limits = c(80,170), breaks = seq(80,170,10), name = lab_elbow) +
   scale_y_continuous(limits = c(0,1), name = expression(paste(zeta))) +
   geom_rangeframe() +
-  annotate(geom = "segment", x = 100, xend = 180, y = log(0), yend = log(0)) +
+  annotate(geom = "segment", x = 80, xend = 170, y = log(0), yend = log(0)) +
   annotate(geom = "segment", x = log(0), xend = log(0), y = 0, yend = 1)
 
 
-plot_oz <- plot_grid(locus_sp, locus_ph, plot_sp_o,plot_ph_o,plot_sp_z,plot_ph_z,
+fig3_full <- plot_grid(locus_sp, locus_ph, plot_sp_o,plot_ph_o,plot_sp_z,plot_ph_z,
                     #arrangement data
                     ncol = 2,
                     rel_widths = c(1,1),
@@ -270,28 +383,43 @@ plot_oz <- plot_grid(locus_sp, locus_ph, plot_sp_o,plot_ph_o,plot_sp_z,plot_ph_z
                     label_size = 10,
                     label_fontfamily = "sans")
 
+
+plot_sp <- ggplot() + 
+  geom_rect(aes(ymax = 3.6, ymin = 0.28, xmin = 0.35, xmax = 1), alpha = 0.4) + 
+  geom_rect(aes(ymax = 10, ymin = 0.16, xmin = 0.25, xmax = 1), alpha = 0.3) + 
+  geom_point(data = subset(dat_cut,eignum == 1 & (sweep == -15 | sweep == -5)), 
+             aes(x = zeta, y = w_sp_na, col = manus, pch = as.factor(sweep))) + 
+  # theme control
+  th +
+  theme(legend.position = 'none') +
+  # colour control
+  scale_color_gradientn(colours = cc_full) + 
+  # axis control 
+  scale_x_continuous(limits = c(0,1), breaks = seq(0,1,0.25), name = expression(paste(zeta))) +
+  scale_y_continuous(limits = c(0,20), name = expression(paste(omega["n"]^2,"/n"[alpha]))) +
+  geom_rangeframe() +
+  annotate(geom = "segment", x = 0, xend = 1, y = log(0), yend = log(0)) +
+  annotate(geom = "segment", x = log(0), xend = log(0), y = 0, yend = 20)
+
 ## ------------- Plot the phase and magnitude -------------------
 
   
 plot_sp_magphase <- ggplot() + 
-  geom_vline(xintercept = seq(0, 1, by = 0.25), colour = "grey70", size = 0.2) +
+  geom_vline(xintercept = seq(0, 0.25, by = 0.05), colour = "grey70", size = 0.2) +
   geom_hline(yintercept = seq(0, 315, by = 45), colour = "grey70", size = 0.2) +
   #geom_segment(data = dat_sp, aes(x = 0, xend = mag1, y = phase1*180/pi, yend = phase1*180/pi, group = del_z), col = col_u, alpha = 0.3) + 
-  geom_point(data = dat_sp, 
-             aes(x = mag1, y = phase1*180/pi,  alpha = 0.5), 
-             size = 2, col = col_u) + 
+  geom_point(data = subset(dat_sp, (sweep == -15 | sweep == -5)), 
+             aes(x = mag1, y = phase1*180/pi, pch = as.factor(sweep)), 
+             size = 2, col = col_u,  alpha = 0.5) + 
   #geom_segment(data = dat_sp, aes(x = 0, xend = mag2, y = phase2*180/pi, yend = phase2*180/pi, group = del_z), col = col_alpha, alpha = 0.3) + 
-  geom_point(data = dat_sp, 
-             aes(x = mag2, y = phase2*180/pi,  alpha = 0.5), 
-             size = 2, col = col_alpha) +
+  geom_point(data = subset(dat_sp, (sweep == -15 | sweep == -5)), 
+             aes(x = mag2, y = phase2*180/pi, pch = as.factor(sweep)), 
+             size = 2, col = col_alpha,  alpha = 0.5) +
   #geom_segment(data = dat_sp, aes(x = 0, xend = mag3, y = phase3*180/pi, yend = phase3*180/pi, group = del_z), col = col_theta, alpha = 0.3) + 
-  geom_point(data = dat_sp, 
-             aes(x = mag3, y = phase3*180/pi,  alpha = 0.5), 
-             size = 2, col = col_q) + 
   #geom_segment(data = dat_sp, aes(x = 0, xend = mag4, y = phase4*180/pi, yend = phase4*180/pi, group= del_z), col = col_q, alpha = 0.3) + 
-  geom_point(data = dat_sp, 
-             aes(x = mag4, y = phase4*180/pi,  alpha = 0.5), 
-             size = 2, col = col_theta) + 
+  geom_point(data = subset(dat_sp, (sweep == -15 | sweep == -5)), 
+             aes(x = mag4, y = phase4*180/pi, pch = as.factor(sweep)), 
+             size = 2, col = col_theta,  alpha = 0.5) + 
   # theme control
   th +
   theme_light()+
@@ -301,30 +429,26 @@ plot_sp_magphase <- ggplot() +
   panel_border(remove = TRUE) + 
   # axis control
   coord_polar(theta = "y", start = -0.5*pi, direction = -1) +
-  scale_x_continuous(limits = c(0,1), breaks = c(0,0.25,0.5,0.75,1), name = "Magnitude") +
+  scale_x_continuous(limits = c(0,0.25), breaks = seq(0, 0.25, by = 0.05), name = "Magnitude") +
   scale_y_continuous(limits = c(0,360), breaks = c(0,90,180,270), name = lab_phase)
   
 ## ----------- Phugoid mode phase and magnitude -----------------
 
-
 plot_ph_magphase <- ggplot() + 
-  geom_vline(xintercept = seq(0, 1, by = 0.25), colour = "grey70", size = 0.2) +
+  geom_vline(xintercept = seq(0, 2.5, by = 0.5), colour = "grey70", size = 0.2) +
   geom_hline(yintercept = seq(0, 315, by = 45), colour = "grey70", size = 0.2) +
   #geom_segment(data = dat_ph, aes(x = 0, xend = mag1, y = phase1*180/pi, yend = phase1*180/pi, group = del_z), col = col_u, alpha = 0.3) + 
-  geom_point(data = dat_ph, 
-             aes(x = mag1, y = phase1*180/pi,  alpha = 0.5), 
+  geom_point(data = subset(dat_ph, (sweep == -15 | sweep == -5)), 
+             aes(x = mag1, y = phase1*180/pi,  alpha = 0.5, pch = as.factor(sweep)), 
              size = 2, col = col_u) + 
   #geom_segment(data = dat_ph, aes(x = 0, xend = mag2, y = phase2*180/pi, yend = phase2*180/pi, group = del_z), col = col_alpha, alpha = 0.3) + 
-  geom_point(data = dat_ph, 
-             aes(x = mag2, y = phase2*180/pi,  alpha = 0.5), 
+  geom_point(data = subset(dat_ph, (sweep == -15 | sweep == -5)), 
+             aes(x = mag2, y = phase2*180/pi,  alpha = 0.5, pch = as.factor(sweep)), 
              size = 2, col = col_alpha) +
   #geom_segment(data = dat_ph, aes(x = 0, xend = mag3, y = phase3*180/pi, yend = phase3*180/pi, group = del_z), col = col_theta, alpha = 0.3) + 
-  geom_point(data = dat_ph, 
-             aes(x = mag3, y = phase3*180/pi,  alpha = 0.5), 
-             size = 2, col = col_q) + 
   #geom_segment(data = dat_ph, aes(x = 0, xend = mag4, y = phase4*180/pi, yend = phase4*180/pi, group= del_z), col = col_q, alpha = 0.3) + 
-  geom_point(data = dat_ph, 
-             aes(x = mag4, y = phase4*180/pi,  alpha = 0.5), 
+  geom_point(data = subset(dat_ph, (sweep == -15 | sweep == -5)), 
+             aes(x = mag4, y = phase4*180/pi,  alpha = 0.5, pch = as.factor(sweep)), 
              size = 2, col = col_theta) + 
   # theme control
   th +
@@ -335,13 +459,14 @@ plot_ph_magphase <- ggplot() +
   panel_border(remove = TRUE) + 
   # axis control
   coord_polar(theta = "y", start = -0.5*pi, direction = -1) +
-  scale_x_continuous(limits = c(0,1), breaks = c(0,0.25,0.5,0.75,1), name = "Magnitude") +
+  scale_x_continuous(limits = c(0,2.5), breaks = seq(0, 2.5, by = 0.5), name = "Magnitude") +
   scale_y_continuous(limits = c(0,360), breaks = c(0,90,180,270), name = lab_phase)
 
 
 ## ------------------- Phase with respect to elbow and wrist angle ------------
-plot_ph_phase <- ggplot() + geom_raster(data = dat_ph, 
-                                        aes(x = elbow, y = manus, alpha = round(phase4,1)*180/pi), fill = col_theta) + 
+plot_ph_phase <- ggplot() + 
+  geom_raster(data = subset(dat_ph, sweep == -15), 
+              aes(x = elbow, y = manus, alpha = round(phase4,1)*180/pi), fill = col_theta) + 
   # theme control
   th +
   scale_alpha_continuous(name = lab_phase) +
@@ -354,7 +479,8 @@ plot_ph_phase <- ggplot() + geom_raster(data = dat_ph,
   annotate(geom = "segment", x = log(0), xend = log(0), y = 100, yend = 160) 
 
 plot_sp_phase <- ggplot() + 
-  geom_raster(data = dat_sp, aes(x = elbow, y = manus, alpha = round(phase4,1)*180/pi), fill = col_theta) + 
+  geom_raster(data = subset(dat_sp, sweep == -15), 
+              aes(x = elbow, y = manus, alpha = round(phase4,1)*180/pi), fill = col_theta) + 
   # theme control
   th +  scale_alpha_continuous(name = lab_phase) +
   # axis control 
@@ -366,7 +492,7 @@ plot_sp_phase <- ggplot() +
   annotate(geom = "segment", x = log(0), xend = log(0), y = 100, yend = 160) 
 
 
-plot_fig3 <- plot_grid(plot_sp_magphase,plot_ph_magphase,
+fig4_full <- plot_grid(plot_sp_magphase,plot_ph_magphase,
           plot_sp_phase,plot_ph_phase,
           #arrangement data
           ncol = 2,
@@ -379,60 +505,47 @@ plot_fig3 <- plot_grid(plot_sp_magphase,plot_ph_magphase,
 
 ## ------------------ Time response to an initial alpha -------------------
 
-
-lim_u     = c(-0.05,0.05)
-lim_alpha = c(-5,5)
-lim_q     = c(-63,63)
-break_q = c(-60,-30,0,30,60)
-lim_theta = c(-8,8)
-break_theta = c(-8,-4,0,4,8)
-plot_time1_dalp <- plot_timeseries(dat_time_1,
+lim_u     = c(-0.02,0.02)
+lim_alpha = c(-2,2)
+lim_q     = c(-50,50)
+break_q = seq(-50,50, by = 25)
+lim_theta = c(-2.5,2.5)
+break_theta = seq(-2.5,2.5,by=1.25)
+lim_time = 10
+plot_dalp <- plot_timeseries(dat_time_1[1:which(dat_time_1$t==lim_time),],
+                                   dat_time_2[1:which(dat_time_1$t==lim_time),],
+                                   dat_time_3[1:which(dat_time_1$t==lim_time),],
+                                   dat_time_4[1:which(dat_time_1$t==lim_time),],
+                                   dat_time_5[1:which(dat_time_1$t==lim_time),],
+                                   dat_time_6[1:which(dat_time_1$t==lim_time),],
                                    col_u,col_alpha,col_q,col_theta,
                                    lim_u,lim_alpha,lim_q,lim_theta, 
-                                   break_q, break_theta, 10)
-plot_time2_dalp <- plot_timeseries(dat_time_2,
-                                   col_u,col_alpha,col_q,col_theta,
-                                   lim_u,lim_alpha,lim_q,lim_theta, 
-                                   break_q, break_theta, 10)
-plot_time3_dalp <- plot_timeseries(dat_time_3,
-                                   col_u,col_alpha,col_q,col_theta,
-                                   lim_u,lim_alpha,lim_q,lim_theta, 
-                                   break_q, break_theta, 10)
-
-plot_fig4 <- plot_grid(plot_time1_dalp,plot_time2_dalp,plot_time3_dalp,
-                       #arrangement data
-                       ncol = 3,
-                       #labels
-                       labels = c("A","B", "C"),
-                       label_size = 10,
-                       label_fontfamily = "sans")
+                                   break_q, break_theta, lim_time)
 
 ## ------------------ Time response to a ramped speed -------------------
 
-lim_u     = c(0,0.25)
-lim_alpha = c(-0.01,0.01)
+lim_u     = c(-0.06,0)
+lim_alpha = c(-0.1,0.1)
 lim_q     = c(-1,1)
-break_q = c(-1,-0.5,0,0.5,1)
-lim_theta = c(-10,0)
-break_theta = c(-10,-5,0)
+break_q   = seq(-1,1, by= 0.5)
+lim_theta = c(-2.5,2.5)
+break_theta = seq(-2.5,2.5, by= 1.25)
+lim_time = 25
+plot_uramp <- plot_timeseries(dat_time_7[1:which(dat_time_1$t==lim_time),],
+                                   dat_time_8[1:which(dat_time_1$t==lim_time),],
+                                   dat_time_9[1:which(dat_time_1$t==lim_time),],
+                                   dat_time_10[1:which(dat_time_1$t==lim_time),],
+                                   dat_time_11[1:which(dat_time_1$t==lim_time),],
+                                   dat_time_12[1:which(dat_time_1$t==lim_time),],
+                                   col_u,col_alpha,col_q,col_theta,
+                                   lim_u,lim_alpha,lim_q,lim_theta, 
+                                   break_q, break_theta, lim_time)
 
-plot_time4_dalp <- plot_timeseries(dat_time_4,
-                                   col_u,col_alpha,col_q,col_theta,
-                                   lim_u,lim_alpha,lim_q,lim_theta, 
-                                   break_q, break_theta, 60)
-plot_time5_dalp <- plot_timeseries(dat_time_5,
-                                   col_u,col_alpha,col_q,col_theta,
-                                   lim_u,lim_alpha,lim_q,lim_theta, 
-                                   break_q, break_theta, 60)
-plot_time6_dalp <- plot_timeseries(dat_time_6,
-                                   col_u,col_alpha,col_q,col_theta,
-                                   lim_u,lim_alpha,lim_q,lim_theta, 
-                                   break_q, break_theta, 60)
-
-plot_fig5 <- plot_grid(plot_time4_dalp,plot_time5_dalp,plot_time6_dalp,
+fig5_full <- plot_grid(plot_dalp,plot_uramp,
                        #arrangement data
-                       ncol = 3,
+                       ncol = 2,
                        #labels
-                       labels = c("A","B", "C"),
+                       labels = c("A","B"),
                        label_size = 10,
                        label_fontfamily = "sans")
+
