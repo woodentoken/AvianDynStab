@@ -12,7 +12,7 @@ def solve_linsys(m, Iyy, rho, S, c, elbow, manus, sw, di, alpha_0, U_0, gamma_ra
     # Caution: theta_rad is in rad and alpha_0 is in deg
     # Collect all necessary aerodynamic coefficients
     CL = aerofn.get_CL(aero_data, elbow, manus, sw, di, alpha_0)
-    CD = aerofn.get_CD(aero_data, elbow, manus, alpha_0, CL)
+    CD = aerofn.get_CD(aero_data, elbow, manus, alpha_0)
 
     # Speed derivatives
     # Drag could extract from the experimental tests CDu = 5.593e-04 - choose to neglect due to small magnitude

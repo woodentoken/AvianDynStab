@@ -28,7 +28,7 @@ def trim_aero(W, rho, S, elbow, manus, sw, di, aero_data):
 
     # Step 5: Estimate the drag at this lift
     CL = get_CL(aero_data, elbow, manus, sw, di, alpha_0)
-    CD = get_CD(aero_data, elbow, manus, alpha_0, CL)
+    CD = get_CD(aero_data, elbow, manus, alpha_0)
 
     # Step 6: Solve the force equations for speed (Ve) and flight path angle in radians (gamma) at this angle of attack
     # CAUTION: Flight path angle (gamma_rad) is the angle between the horizon and the velocity vector
@@ -107,11 +107,10 @@ def get_dCL_dalp(aero_data, elbow, manus, sweep, dihedral, alpha_0):
     return CL_alp
 
 
-def get_CD(aero_data, elbow, manus, alpha_0, CL):
+def get_CD(aero_data, elbow, manus, alpha_0):
     CD = aero_data['intercept'][2] + \
          aero_data['elbow'][2] * elbow + \
          aero_data['manus'][2] * manus + \
-         aero_data['CL'][2] * CL + \
          aero_data['alpha'][2] * alpha_0 + \
          aero_data['alpha2'][2] * (alpha_0 ** 2) + \
          aero_data['elbowalpha'][2] * elbow * \
