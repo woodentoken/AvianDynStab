@@ -7,6 +7,8 @@ import numpy as np
 import csv
 import aero_functions as aerofn
 from datetime import date
+import control
+import matplotlib.pyplot as plt
 
 # -------- Generic run script -------
 rho = 1.225
@@ -52,47 +54,68 @@ for sw in sweep_test:
                     continue
 
                 # Step 2: Solve the homogenous eigen problem
-                A = dynfn.solve_linsys(m, Iyy, rho, S_max, c_max, elbow, manus, sw, di, alpha_0, V_e,
-                                       gamma_rad, coef_data)
+                A, B_gust = dynfn.solve_linsys(m, Iyy, rho, S_max, c_max, elbow, manus, sw, di, alpha_0, V_e,
+                                               gamma_rad, coef_data)
 
                 # initialize to not compute time series unless specified
                 compute = False
 
                 # Only grab time series of the following configurations
-                if e == 90 and w == 120:
-                    compute = True
-                if e == 120 and w == 120:
-                    compute = True
-                if e == 120 and w == 150:
+                if e == 126 and (w == 106 or w == 116 or w == 126 or w == 136 or w == 146 or w == 156):
                     compute = True
 
                 if compute:
+
                     # --------------------------------------------------------------------
                     # Step 3: Extract the free response of the system wrt d_alp
-                    x0 = [0, 2 * np.pi / 180, 0, 0]     # initial condition
-                    length_t = 60                       # total time saved
-                    timesteps = 6000                    # amount of steps s.t. dt = timesteps/length_t
-                    # solve for time response
-                    out = dynfn.calc_res_dalp(x0, length_t, timesteps, A)
-                    # save outputs
+                    B = np.transpose(np.asarray([[0, 0, 0, 0]]))
+                    C = np.identity(4)
+                    D = B
+                    t = [np.arange(0, 100, step=0.001)]
+                    # Define the state space model
+                    system = control.ss(A, B, C, D)
+                    x0 = np.transpose([[0, 2 * np.pi / 180, 0, 0]]) # increase of 2deg
+                    # solve the system
+                    out_step = control.initial_response(system, T=t, X0=x0)
+                    # save the data
+                    dat_step = np.transpose(np.insert(out_step[1], values=np.asarray(out_step[0]), obj=0, axis=0))
                     filename = "outputdata/" + \
                                 date_adj + "_elbow" + str(elbow) + "_manus" + str(manus) + \
                                "_sw" + str(sw) + "_di" + str(di) + "_dalp.csv"
-                    np.savetxt(filename, out, delimiter=",")
+                    np.savetxt(filename, dat_step, delimiter=",")
                     # --------------------------------------------------------------------
-                    # Step 4: Extract the time response of the system wrt ramped up speed
-                    x0 = [0, 0, 0, 0]                   # initial condition
-                    u_ramp = 0.01                       # change in the velocity divided by total velocity (1%)
-                    B = np.asarray([u_ramp, 0, 0, 0])   # time dependent portion of the forced response
-                    C = np.asarray([0, 0, 0, 0])        # constant in time portion of the forced response
-                    ramp_end = 5                        # seconds until time dependent part stops
-                    length_t = 60                       # total time saved
-                    timesteps = ramp_end*1200           # amount of steps s.t. dt = timesteps/length_t
-                    # solve for time response
-                    out = dynfn.calc_res_uramp(x0, length_t, timesteps, A, B, C, ramp_end)
-                    # save outputs
+                    # Step 4: Extract the time response of the system wrt to a ramping incoming velocity
+                    # allows speed control
+                    system = control.ss(A, B_gust, C, D)
+                    x0 = np.transpose([[0, 0, 0, 0]])  # initial condition
+                    # ramps speed linearly with time up to 5 secs
+                    u_ramp = np.append(0.01*t[0][0:5001], 0.01*t[0][5000]*np.ones(len(t[0]) - len(t[0][0:5001])))
+                    # solve the system
+                    out_force = control.forced_response(system, T=t, X0=x0, U=u_ramp)
+                    # save the data
+                    dat_force = np.transpose(np.insert(out_force[1], values=np.asarray(out_force[0]), obj=0, axis=0))
                     filename = "outputdata/" + \
                                 date_adj + "_elbow" + str(elbow) + "_manus" + str(manus) + \
                                "_sw" + str(sw) + "_di" + str(di) + "_uramp.csv"
-                    np.savetxt(filename, out, delimiter=",")
+                    np.savetxt(filename, dat_force, delimiter=",")
+
+                    # Step 5: Extract the time response of the system wrt to a ramping incoming velocity
+                    # NO speed control
+                    A_no_u = np.delete(np.delete(A, obj=0, axis=0), obj=0, axis=1)
+                    B_no_u = np.delete(B_gust, obj=0)
+                    B_no_u.shape = (3, 1)
+                    D_no_u = np.zeros(3)
+                    D_no_u.shape = (3, 1)
+                    x0_no_u = np.transpose([[0, 0, 0]])  # initial condition
+                    system = control.ss(A_no_u, B_no_u, np.identity(3), D_no_u)
+                    out_force_no_u = control.forced_response(system, T=t, X0=x0_no_u, U=u_ramp)
+                    # save the data
+                    dat_force_no_u = np.insert(out_force_no_u[1],
+                                               values=np.asarray(u_ramp), obj=0, axis=0)
+                    dat_force_no_u = np.transpose(np.insert(dat_force_no_u,
+                                                            values=np.asarray(out_force_no_u[0]), obj=0, axis=0))
+                    filename = "outputdata/" + \
+                                date_adj + "_elbow" + str(elbow) + "_manus" + str(manus) + \
+                               "_sw" + str(sw) + "_di" + str(di) + "_uramp_no_u.csv"
+                    np.savetxt(filename, dat_force_no_u, delimiter=",")
                     # --------------------------------------------------------------------

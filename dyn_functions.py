@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 import cmath
 from datetime import date
@@ -11,6 +13,10 @@ def solve_linsys(m, Iyy, rho, S, c, elbow, manus, sw, di, alpha_0, U_0, gamma_ra
     # Collect all necessary aerodynamic coefficients
     CL = aerofn.get_CL(aero_data, elbow, manus, sw, di, alpha_0)
     CD = aerofn.get_CD(aero_data, elbow, manus, alpha_0, CL)
+
+    # Speed derivatives
+    # Drag could extract from the experimental tests CDu = 5.593e-04 - choose to neglect due to small magnitude
+    # There was no significant effect of speed on the pitching moment or lift
 
     # Collect all angle of attack derivatives
     CL_alp = aerofn.get_dCL_dalp(aero_data, elbow, manus, sw, di, alpha_0)
@@ -40,6 +46,22 @@ def solve_linsys(m, Iyy, rho, S, c, elbow, manus, sw, di, alpha_0, U_0, gamma_ra
 
     # solve for the free response of the linear system
     eig_val, eig_vec = np.linalg.eig(A)
+
+    # need to make sure that the complex conjugate pairs are grouped together
+    new_eig_val = copy.deepcopy(eig_val)
+    new_eig_vec = copy.deepcopy(eig_vec)
+    if abs(eig_val[1].imag) == abs(eig_val[2].imag) and abs(eig_val[1].real) == abs(eig_val[2].real):
+        new_eig_val[2] = copy.deepcopy(eig_val[1])
+        new_eig_val[3] = copy.deepcopy(eig_val[2])
+        new_eig_val[0] = copy.deepcopy(eig_val[0])
+        new_eig_val[1] = copy.deepcopy(eig_val[3])
+        new_eig_vec[2] = copy.deepcopy(eig_vec[1])
+        new_eig_vec[3] = copy.deepcopy(eig_vec[2])
+        new_eig_vec[0] = copy.deepcopy(eig_vec[0])
+        new_eig_vec[1] = copy.deepcopy(eig_vec[3])
+
+        eig_val = copy.deepcopy(new_eig_val)
+        eig_vec = copy.deepcopy(new_eig_vec)
 
     # pre-define inputs
     damp = [0] * 2
@@ -96,7 +118,9 @@ def solve_linsys(m, Iyy, rho, S, c, elbow, manus, sw, di, alpha_0, U_0, gamma_ra
                          phase[12], phase[13], phase[14], phase[15],
                          CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, trim, Cm])
 
-    return A
+    B = np.array([2 * m_til * (-CD), 2 * m_til * (-CL), 0, 0])  # for gust response only
+
+    return A, B
 
 
 def def_model_free(x, t, A):
@@ -118,6 +142,29 @@ def solve_IVP(A, x0, t, B=None, C=None, end=None, mod_type="free"):
         # assumes that u(t) = t
         x = odeint(def_model_forced, x0, t, args=(A, B, C, end))
     return x
+
+
+def calc_res_dalp(x0, t_max, timesteps, A):
+
+    t = np.linspace(0, t_max, timesteps)
+    x = solve_IVP(A, x0, t, mod_type="free")
+
+    # arrange the data to be saved
+    t.shape = (timesteps, 1)
+    out_dalp = np.hstack((t, x))
+
+    return out_dalp
+
+
+def calc_res_uramp(x0, t_max, timesteps, A, B, C, end):
+    t = np.linspace(0, t_max, timesteps)
+    x = solve_IVP(A, x0, t, B, C, end, mod_type="forced")
+
+    # arrange the data to be saved
+    t.shape = (timesteps, 1)
+    out_du = np.hstack((t, x))
+
+    return out_du
 
 
 def get_Iyy(elbow, manus, sweep, dihedral, coef_data):
@@ -143,26 +190,3 @@ def get_Iyy(elbow, manus, sweep, dihedral, coef_data):
           coef_data['elbowmanussweepdihedral'][0] * elbow * manus * sweep * dihedral
 
     return Iyy
-
-
-def calc_res_dalp(x0, t_max, timesteps, A):
-
-    t = np.linspace(0, t_max, timesteps)
-    x = solve_IVP(A, x0, t, mod_type="free")
-
-    # arrange the data to be saved
-    t.shape = (timesteps, 1)
-    out_dalp = np.hstack((t, x))
-
-    return out_dalp
-
-
-def calc_res_uramp(x0, t_max, timesteps, A, B, C, end):
-    t = np.linspace(0, t_max, timesteps)
-    x = solve_IVP(A, x0, t, B, C, end, mod_type="forced")
-
-    # arrange the data to be saved
-    t.shape = (timesteps, 1)
-    out_du = np.hstack((t, x))
-
-    return out_du
