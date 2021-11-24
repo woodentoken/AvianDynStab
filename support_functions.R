@@ -29,11 +29,16 @@ cut_trueshape <- function(dat,dat_geom,col_elbow,col_manus){
 ### ---------------------------------------------------------------------------------------
 ## --------------------- Return the time series plots -------------------------------------
 ### ---------------------------------------------------------------------------------------
-plot_timeseries <- function(dat_time,col_u,col_alpha,col_q,col_theta,lim_u,lim_alpha,lim_q,lim_theta,break_q, break_theta,lim_t){
+plot_timeseries <- function(dat_time1,dat_time2,dat_time3,dat_time4,dat_time5,dat_time6,col_u,col_alpha,col_q,col_theta,lim_u,lim_alpha,lim_q,lim_theta,break_q, break_theta,lim_t){
   
   # ------------ u time series ----------
   plot_del_u     = ggplot() + 
-    geom_line(data = dat_time, aes(x = t, y = del_u), col = col_u) + 
+    geom_line(data = dat_time1, aes(x = t, y = del_u), col = col_u, alpha = 1) + 
+    geom_line(data = dat_time2, aes(x = t, y = del_u), col = col_u, alpha = 0.8) + 
+    geom_line(data = dat_time3, aes(x = t, y = del_u), col = col_u, alpha = 0.6) + 
+    geom_line(data = dat_time4, aes(x = t, y = del_u), col = col_u, alpha = 0.4) + 
+    geom_line(data = dat_time5, aes(x = t, y = del_u), col = col_u, alpha = 0.2) + 
+    geom_line(data = dat_time6, aes(x = t, y = del_u), col = col_u, alpha = 1, linetype = 2) + 
     th + 
     # axis control
     scale_x_continuous(limits = c(0,lim_t), name = "Time (s)") + 
@@ -44,7 +49,12 @@ plot_timeseries <- function(dat_time,col_u,col_alpha,col_q,col_theta,lim_u,lim_a
   
   # ------------ alpha time series ----------
   plot_del_alp   = ggplot() + 
-    geom_line(data = dat_time, aes(x = t, y = del_alp*180/pi), col = col_alpha) + 
+    geom_line(data = dat_time1, aes(x = t, y = del_alp*180/pi), col = col_alpha, alpha = 1) + 
+    geom_line(data = dat_time2, aes(x = t, y = del_alp*180/pi), col = col_alpha, alpha = 0.8) + 
+    geom_line(data = dat_time3, aes(x = t, y = del_alp*180/pi), col = col_alpha, alpha = 0.6) +
+    geom_line(data = dat_time4, aes(x = t, y = del_alp*180/pi), col = col_alpha, alpha = 0.4) + 
+    geom_line(data = dat_time5, aes(x = t, y = del_alp*180/pi), col = col_alpha, alpha = 0.2) + 
+    geom_line(data = dat_time6, aes(x = t, y = del_alp*180/pi), col = col_alpha, alpha = 1, linetype = 2) + 
     th + 
     # axis control
     scale_x_continuous(limits = c(0,lim_t), name = "Time (s)") + 
@@ -55,25 +65,35 @@ plot_timeseries <- function(dat_time,col_u,col_alpha,col_q,col_theta,lim_u,lim_a
   
   # ------------ q time series ----------
   plot_del_q     = ggplot() + 
-    geom_line(data = dat_time, aes(x = t, y = del_q*180/pi), col = col_q) + 
+    geom_line(data = dat_time1, aes(x = t, y = del_q*180/pi), col = col_q, alpha = 1) + 
+    geom_line(data = dat_time2, aes(x = t, y = del_q*180/pi), col = col_q, alpha = 0.8) + 
+    geom_line(data = dat_time3, aes(x = t, y = del_q*180/pi), col = col_q, alpha = 0.6) + 
+    geom_line(data = dat_time4, aes(x = t, y = del_q*180/pi), col = col_q, alpha = 0.4) + 
+    geom_line(data = dat_time5, aes(x = t, y = del_q*180/pi), col = col_q, alpha = 0.2) + 
+    geom_line(data = dat_time6, aes(x = t, y = del_q*180/pi), col = col_q, alpha = 1, linetype = 2) + 
     th + 
     # axis control    
     scale_x_continuous(limits = c(0,lim_t), name = "Time (s)") + 
     scale_y_continuous(limits = lim_q, breaks = break_q, name = expression(paste(Delta,"q (°/s)"))) +
     geom_rangeframe() +
     annotate(geom = "segment", x = 0, xend = lim_t, y = log(0), yend = log(0)) +
-    annotate(geom = "segment", x = log(0), xend = log(0), y = break_q[1], yend = break_q[5])
+    annotate(geom = "segment", x = log(0), xend = log(0), y = min(break_q), yend = max(break_q))
   
   # ------------ theta time series ----------
   plot_del_theta = ggplot() + 
-    geom_line(data = dat_time, aes(x = t, y = del_theta*180/pi), col = col_theta) + 
+    geom_line(data = dat_time1, aes(x = t, y = del_theta*180/pi), col = col_theta, alpha = 1) + 
+    geom_line(data = dat_time2, aes(x = t, y = del_theta*180/pi), col = col_theta, alpha = 0.8) + 
+    geom_line(data = dat_time3, aes(x = t, y = del_theta*180/pi), col = col_theta, alpha = 0.5) + 
+    geom_line(data = dat_time4, aes(x = t, y = del_theta*180/pi), col = col_theta, alpha = 0.4) + 
+    geom_line(data = dat_time5, aes(x = t, y = del_theta*180/pi), col = col_theta, alpha = 0.2) + 
+    geom_line(data = dat_time6, aes(x = t, y = del_theta*180/pi), col = col_theta, alpha = 1, linetype = 2) + 
     th + 
     # axis control
     scale_x_continuous(limits = c(0,lim_t), name = "Time (s)") + 
     scale_y_continuous(limits = lim_theta, breaks = break_theta, name = expression(paste(Delta,theta," (°)"))) +
     geom_rangeframe() +
     annotate(geom = "segment", x = 0, xend = lim_t, y = log(0), yend = log(0)) +
-    annotate(geom = "segment", x = log(0), xend = log(0), y = lim_theta[1], yend = lim_theta[2])
+    annotate(geom = "segment", x = log(0), xend = log(0), y = min(lim_theta), yend = max(lim_theta))
   
   plot_out <- plot_grid(plot_del_u,plot_del_alp,plot_del_q,plot_del_theta,
                         #arrangement data

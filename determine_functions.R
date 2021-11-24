@@ -117,7 +117,7 @@ dat_exp$CD_true     <- dat_exp$D_comp/(0.5*max(dat_num$S[which(dat_num$WingID ==
 # CAUTION: Assumes that drag is independent of shoulder angles (small angle approx)
 # CAUTION: this model predicts the drag based on input angle of attack therefore we are not adjusting for changes in lift
 
-mod_CD <- lm(CD_true ~ elbow + manus + alpha + I(alpha^2) + L_comp +  
+mod_CD <- lm(CD_true ~ elbow + manus + alpha + I(alpha^2) + 
                elbow:I(alpha^2) + manus:I(alpha^2) + 
                elbow:alpha + manus:alpha, data = subset(dat_exp, U_des == "low"))
 
@@ -366,7 +366,6 @@ coef_all$y.model[3]      = "CD"
 coef_all$intercept[3]    = coef(mod_CD)["(Intercept)"]
 coef_all$elbow[3]        = coef(mod_CD)["elbow"]
 coef_all$manus[3]        = coef(mod_CD)["manus"]
-coef_all$CL[3]           = coef(mod_CD)["L_comp"]
 coef_all$alpha[3]        = coef(mod_CD)["alpha"]
 coef_all$alpha2[3]       = coef(mod_CD)["I(alpha^2)"]
 coef_all$elbowalpha2[3]  = coef(mod_CD)["elbow:I(alpha^2)"]
