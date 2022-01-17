@@ -19,7 +19,7 @@ S_max = 0.244657  # wings and body reference area
 c_max = 0.2861011  # wing root chord
 
 coef_data = pd.read_csv('/Volumes/GoogleDrive/My Drive/DoctoralThesis/Chapter3_DynamicStability/coefficients'
-                                '/2021_11_21_coefficients_all.csv')
+                                '/2021_12_01_coefficients_all.csv')
 
 dihedral_test = [10, 15, 20]
 sweep_test = [-20, -15, -10, -5, 0, 5, 10]
@@ -61,7 +61,7 @@ for sw in sweep_test:
                 compute = False
 
                 # Only grab time series of the following configurations
-                if e == 126 and (w == 106 or w == 116 or w == 126 or w == 136 or w == 146 or w == 156):
+                if e == 130 and (w == 106 or w == 116 or w == 126 or w == 136 or w == 146 or w == 156 or w == 166):
                     compute = True
 
                 if compute:
