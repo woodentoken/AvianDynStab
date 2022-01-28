@@ -3,11 +3,23 @@ library(pracma)
 source("support_functions.R")
 
 ## --------------- Load aerodynamic data with no tail and 0 shoulder angle -------------
-# saved after running analyse_llt.R and analyze_expresults.R - no changes
+# saved after running analyse_llt.R and analyze_expresults.R - no changes JRSI 2021 paper data
 load("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/aerodynamic_data.RData")
+# loads:
+# "dat_num" the MachUpX results for 0 shoulder sweep and dihedral 
+# "dat_exp" the experimental results for 9 wings with 0 shoulder sweep and dihedral 
 ## --------------- Load all inertial results -------------
-#saved after running process_outputdata.R
-load("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/inertial_data.RData")
+# function obtained https://stackoverflow.com/questions/8700619/get-specific-object-from-rdata-file
+extractorRData <- function(file, object) {
+  #' Function for extracting an object from a .RData file created by R's save() command
+  #' Inputs: RData file, object name
+  E <- new.env()
+  load(file=file, envir=E)
+  return(get(object, envir=E, inherits=F))
+}
+
+#saved after running process_outputdata.R Nature 2022 paper data
+dat_final <- extractorRData("/Users/christinaharvey/Documents/AvInertia/AnalysisData/2021_09_03_alldata_workspace.RData","dat_final")
 
 ## --------------- Load all wing shapes -------------
 dat_all <- read.csv('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/2020_05_25_OrientedWings.csv', 
@@ -60,6 +72,8 @@ dat_shoulder <- rbind(dat_shoulder,tmp)
 dat_tail_all <- read.csv('/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/2021_10_13_dyn_subsamplewings.csv', 
                          stringsAsFactors = FALSE,strip.white = TRUE, na.strings = c("") )
 
+# want these maximums to be taken only from the shoulder angles of 0deg as that is the only info we have for the inertial gull
+# this is why it is taken from "dat_num" rather than from "dat_shoulder"
 for (i in 1:nrow(dat_shoulder)){
   dat_shoulder$S_max[i]      = max(dat_num$S_max[which(dat_num$WingID == dat_shoulder$WingID[i])])
   dat_shoulder$root_c_max[i] = max(dat_num$root_c_max[which(dat_num$WingID == dat_shoulder$WingID[i])])
@@ -102,15 +116,20 @@ remove(dat_final)
 #----- Hard-coded inputs into Python --------
 max(dat_inertial$full_m)
 # need this to be two wings + full body area
-2*max(dat_inertial$S_max) + 0.0298 # body area was determined by dividing 0.4/0.41*(0.0305) that number is taken from 3 different wings test .dist outputs from MachUpX
-max(dat_inertial$c_max) # root chord approximation - calculated in the same manner as above in processdata.R
+2*max(dat_inertial$S_max) + 0.0298 
+# body area was determined by 0.4/0.41*(0.0305) 
+# 0.41 is the length of the estimated body in MachUpX
+# 0.4 is length of inertial body 
+# 0.0305 is body area taken from 3 different wings test .dist outputs from MachUpX
+max(dat_inertial$c_root_max) 
+# root chord approximation - calculated in the same manner as above in processdata.R 
 
 uni_shoulder = unique(dat_shoulder[,c("sweep","dihedral")])
 count = 1 # initialize
 
 # ------ Step 0: CD data ------
 # need to fit to experimental data due to the reduced - following same adjustment as the lift in analyse_exp.R
-dat_exp$CD_true     <- dat_exp$D_comp/(0.5*max(dat_num$S[which(dat_num$WingID == "17_0285")]))
+dat_exp$CD_true     <- dat_exp$D_comp/(0.5*max(dat_num$S[which(dat_num$WingID == "17_0285")])) # not included in analyse_exp.R
 
 # NOTE: significant effect of the speed in tunnel on the drag coefficient, will limit to low only
 # NOTE: interactive term elbow:manus was non-significant leave them out
@@ -126,7 +145,7 @@ dat_shoulder$CD_adj_exp = predict(mod_CD,dat_shoulder)
 dat_shoulder$D_adj_exp  = (0.5*1.225*10^2*dat_shoulder$S_max)*dat_shoulder$CD_adj_exp
 
 # Calculate the estimated drag for the q derivatives as well
-dat_q$CL_adj = dat_q$FL/(0.5*1.225*10^2*max(dat_num$S[which(dat_num$WingID == "17_0285")])) # note that the wings ran for the q derivatives are only from 17_0285
+dat_q$CL_adj     = dat_q$FL/(0.5*1.225*10^2*max(dat_num$S[which(dat_num$WingID == "17_0285")])) # note that the wings ran for the q derivatives are only from 17_0285
 dat_q$L_comp     = dat_q$CL_adj
 dat_q$CD_adj_exp = predict(mod_CD,dat_q)
 dat_q$D_adj_exp  = (0.5*1.225*10^2*max(dat_num$S[which(dat_num$WingID == "17_0285")]))*dat_q$CD_adj_exp
@@ -217,7 +236,7 @@ for (k in 1:nrow(uni_shoulder)){
                    I(elbow_scale^2) + I(elbow_scale^3) +
                    I(manus_scale^2) + I(manus_scale^3), data = dat_stab_adj)
    
-  dat_aero_curr$cmcl_predict = predict(mod_cmcl,dat_aero_curr) # the origin must be at the shoulder joint!!
+  dat_aero_curr$cmcl_predict = predict(mod_cmcl,dat_aero_curr) # note this is not used in the analysis
   dat_aero_curr <- merge(dat_aero_curr,dat_stab_adj[,c("FrameID","WingID","TestID","cmcl_true")], 
                    by = c("FrameID","WingID","TestID"), all.x = TRUE)
   
