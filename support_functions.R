@@ -29,17 +29,21 @@ cut_trueshape <- function(dat,dat_geom,col_elbow,col_manus){
 ### ---------------------------------------------------------------------------------------
 ## --------------------- Return the time series plots -------------------------------------
 ### ---------------------------------------------------------------------------------------
-plot_timeseries <- function(dat_time1,dat_time2,dat_time3,dat_time4,dat_time5,dat_time6,col_u,col_alpha,col_q,col_theta,lim_u,lim_alpha,lim_q,lim_theta,break_q, break_theta,lim_t){
+plot_timeseries <- function(dat_time1,dat_time2,dat_time3,dat_time4,dat_time5,dat_time6,dat_time7,col_wrist,lim_u,lim_alpha,lim_q,lim_theta,break_q, break_theta,lim_t){
   
   # ------------ u time series ----------
   plot_del_u     = ggplot() + 
-    geom_line(data = dat_time1, aes(x = t, y = del_u), col = col_u, alpha = 1) + 
-    geom_line(data = dat_time2, aes(x = t, y = del_u), col = col_u, alpha = 0.8) + 
-    geom_line(data = dat_time3, aes(x = t, y = del_u), col = col_u, alpha = 0.6) + 
-    geom_line(data = dat_time4, aes(x = t, y = del_u), col = col_u, alpha = 0.4) + 
-    geom_line(data = dat_time5, aes(x = t, y = del_u), col = col_u, alpha = 0.2) + 
-    geom_line(data = dat_time6, aes(x = t, y = del_u), col = col_u, alpha = 1, linetype = 2) + 
+    geom_line(data = dat_time1, aes(x = t, y = del_u), col = col_wrist[1]) + 
+    geom_line(data = dat_time2, aes(x = t, y = del_u), col = col_wrist[2]) + 
+    geom_line(data = dat_time3, aes(x = t, y = del_u), col = col_wrist[3]) + 
+    geom_line(data = dat_time4, aes(x = t, y = del_u), col = col_wrist[4]) + 
+    geom_line(data = dat_time5, aes(x = t, y = del_u), col = col_wrist[5]) + 
+    geom_line(data = dat_time6, aes(x = t, y = del_u), col = col_wrist[6]) + 
+    geom_line(data = dat_time7, aes(x = t, y = del_u), col = col_wrist[7]) + 
+    # theme control
     th + 
+    theme(axis.title.x=element_blank(),
+          axis.text.x=element_blank()) +
     # axis control
     scale_x_continuous(limits = c(0,lim_t), name = "Time (s)") + 
     scale_y_continuous(limits = lim_u, name = "u (m/s)") +
@@ -49,13 +53,17 @@ plot_timeseries <- function(dat_time1,dat_time2,dat_time3,dat_time4,dat_time5,da
   
   # ------------ alpha time series ----------
   plot_del_alp   = ggplot() + 
-    geom_line(data = dat_time1, aes(x = t, y = del_alp*180/pi), col = col_alpha, alpha = 1) + 
-    geom_line(data = dat_time2, aes(x = t, y = del_alp*180/pi), col = col_alpha, alpha = 0.8) + 
-    geom_line(data = dat_time3, aes(x = t, y = del_alp*180/pi), col = col_alpha, alpha = 0.6) +
-    geom_line(data = dat_time4, aes(x = t, y = del_alp*180/pi), col = col_alpha, alpha = 0.4) + 
-    geom_line(data = dat_time5, aes(x = t, y = del_alp*180/pi), col = col_alpha, alpha = 0.2) + 
-    geom_line(data = dat_time6, aes(x = t, y = del_alp*180/pi), col = col_alpha, alpha = 1, linetype = 2) + 
-    th + 
+    geom_line(data = dat_time1, aes(x = t, y = del_alp*180/pi), col = col_wrist[1]) + 
+    geom_line(data = dat_time2, aes(x = t, y = del_alp*180/pi), col = col_wrist[2]) + 
+    geom_line(data = dat_time3, aes(x = t, y = del_alp*180/pi), col = col_wrist[3]) +
+    geom_line(data = dat_time4, aes(x = t, y = del_alp*180/pi), col = col_wrist[4]) + 
+    geom_line(data = dat_time5, aes(x = t, y = del_alp*180/pi), col = col_wrist[5]) + 
+    geom_line(data = dat_time6, aes(x = t, y = del_alp*180/pi), col = col_wrist[6]) + 
+    geom_line(data = dat_time7, aes(x = t, y = del_alp*180/pi), col = col_wrist[7]) + 
+    # theme control
+    th +
+    theme(axis.title.x=element_blank(),
+          axis.text.x=element_blank()) +
     # axis control
     scale_x_continuous(limits = c(0,lim_t), name = "Time (s)") + 
     scale_y_continuous(limits = lim_alpha, name = expression(paste(Delta,alpha," (°)"))) +
@@ -65,13 +73,17 @@ plot_timeseries <- function(dat_time1,dat_time2,dat_time3,dat_time4,dat_time5,da
   
   # ------------ q time series ----------
   plot_del_q     = ggplot() + 
-    geom_line(data = dat_time1, aes(x = t, y = del_q*180/pi), col = col_q, alpha = 1) + 
-    geom_line(data = dat_time2, aes(x = t, y = del_q*180/pi), col = col_q, alpha = 0.8) + 
-    geom_line(data = dat_time3, aes(x = t, y = del_q*180/pi), col = col_q, alpha = 0.6) + 
-    geom_line(data = dat_time4, aes(x = t, y = del_q*180/pi), col = col_q, alpha = 0.4) + 
-    geom_line(data = dat_time5, aes(x = t, y = del_q*180/pi), col = col_q, alpha = 0.2) + 
-    geom_line(data = dat_time6, aes(x = t, y = del_q*180/pi), col = col_q, alpha = 1, linetype = 2) + 
+    geom_line(data = dat_time1, aes(x = t, y = del_q*180/pi), col = col_wrist[1]) + 
+    geom_line(data = dat_time2, aes(x = t, y = del_q*180/pi), col = col_wrist[2]) + 
+    geom_line(data = dat_time3, aes(x = t, y = del_q*180/pi), col = col_wrist[3]) + 
+    geom_line(data = dat_time4, aes(x = t, y = del_q*180/pi), col = col_wrist[4]) + 
+    geom_line(data = dat_time5, aes(x = t, y = del_q*180/pi), col = col_wrist[5]) + 
+    geom_line(data = dat_time6, aes(x = t, y = del_q*180/pi), col = col_wrist[6]) + 
+    geom_line(data = dat_time7, aes(x = t, y = del_q*180/pi), col = col_wrist[7]) + 
+    # theme control
     th + 
+    theme(axis.title.x=element_blank(),
+          axis.text.x=element_blank()) +
     # axis control    
     scale_x_continuous(limits = c(0,lim_t), name = "Time (s)") + 
     scale_y_continuous(limits = lim_q, breaks = break_q, name = expression(paste(Delta,"q (°/s)"))) +
@@ -81,12 +93,14 @@ plot_timeseries <- function(dat_time1,dat_time2,dat_time3,dat_time4,dat_time5,da
   
   # ------------ theta time series ----------
   plot_del_theta = ggplot() + 
-    geom_line(data = dat_time1, aes(x = t, y = del_theta*180/pi), col = col_theta, alpha = 1) + 
-    geom_line(data = dat_time2, aes(x = t, y = del_theta*180/pi), col = col_theta, alpha = 0.8) + 
-    geom_line(data = dat_time3, aes(x = t, y = del_theta*180/pi), col = col_theta, alpha = 0.5) + 
-    geom_line(data = dat_time4, aes(x = t, y = del_theta*180/pi), col = col_theta, alpha = 0.4) + 
-    geom_line(data = dat_time5, aes(x = t, y = del_theta*180/pi), col = col_theta, alpha = 0.2) + 
-    geom_line(data = dat_time6, aes(x = t, y = del_theta*180/pi), col = col_theta, alpha = 1, linetype = 2) + 
+    geom_line(data = dat_time1, aes(x = t, y = del_theta*180/pi), col = col_wrist[1]) + 
+    geom_line(data = dat_time2, aes(x = t, y = del_theta*180/pi), col = col_wrist[2]) + 
+    geom_line(data = dat_time3, aes(x = t, y = del_theta*180/pi), col = col_wrist[3]) + 
+    geom_line(data = dat_time4, aes(x = t, y = del_theta*180/pi), col = col_wrist[4]) + 
+    geom_line(data = dat_time5, aes(x = t, y = del_theta*180/pi), col = col_wrist[5]) + 
+    geom_line(data = dat_time6, aes(x = t, y = del_theta*180/pi), col = col_wrist[6]) + 
+    geom_line(data = dat_time7, aes(x = t, y = del_theta*180/pi), col = col_wrist[7]) +
+    # theme control
     th + 
     # axis control
     scale_x_continuous(limits = c(0,lim_t), name = "Time (s)") + 
@@ -96,6 +110,7 @@ plot_timeseries <- function(dat_time1,dat_time2,dat_time3,dat_time4,dat_time5,da
     annotate(geom = "segment", x = log(0), xend = log(0), y = min(lim_theta), yend = max(lim_theta))
   
   plot_out <- plot_grid(plot_del_u,plot_del_alp,plot_del_q,plot_del_theta,
+                        align = "v",
                         #arrangement data
                         ncol = 1,
                         #labels
@@ -295,7 +310,6 @@ adjust_inertia <- function(sweep,dihedral,dat_in){
     # Step 1: Shift the moment of inertia origin to the wing CG and then the humeral head
     
     hum_head = c(dat_in$pt1_X[i],dat_in$pt1_Y[i],dat_in$pt1_Z[i])
-    
     wing_rot = shift_Iorigin(wing$I,c(0,0,0),wing$CG,"A",wing$m,hum_head) # Output Origin: Humeral head
     # Inputs = input_I,input_origin,input_CG,input_cg_or_a,input_m,new_origin
     # Note that all distances should always be input within the VRP origin (i.e. CG measured from the VRP)
