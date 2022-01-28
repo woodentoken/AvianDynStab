@@ -13,13 +13,13 @@ import matplotlib.pyplot as plt
 # -------- Generic run script -------
 rho = 1.225
 # taken from the bird body specimen tested in AvInertia - chord was scaled to match this bird
-m = 1.0154  # mass (kg)
+m = 1.0154  # mass (kg) - from determine_functions.R
 W = m * 9.81  # weight (N)
-S_max = 0.244657  # wings and body reference area
-c_max = 0.2861011  # wing root chord
+S_max = 0.267782  # wings and body reference area - from determine_functions.R
+c_max = 0.2861011  # wing root chord - from determine_functions.R
 
 coef_data = pd.read_csv('/Volumes/GoogleDrive/My Drive/DoctoralThesis/Chapter3_DynamicStability/coefficients'
-                                '/2021_12_01_coefficients_all.csv')
+                                '/2022_01_24_coefficients_all.csv')
 
 dihedral_test = [10, 15, 20]
 sweep_test = [-20, -15, -10, -5, 0, 5, 10]
