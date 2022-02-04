@@ -118,7 +118,10 @@ def solve_linsys(m, Iyy, rho, S, c, elbow, manus, sw, di, alpha_0, U_0, gamma_ra
                          phase[12], phase[13], phase[14], phase[15],
                          CL, CD, CL_alp, CD_alp, Cm_alp, CL_q, Cm_q, trim, Cm])
 
-    B = np.array([2 * m_til * (-CD), 2 * m_til * (-CL), 0, 0])  # for gust response only
+    # should be opposite sign from A since an increase in gust speed will decrease the relative speed of aircraft
+    # Nelson Chapter 6
+    # https://ocw.mit.edu/courses/aeronautics-and-astronautics/16-333-aircraft-stability-and-control-fall-2004/lecture-notes/lecture_14.pdf
+    B = np.array([2 * m_til * (CD), 2 * m_til * (CL), 0, 0])  # for x-velocity gust response only
 
     return A, B
 

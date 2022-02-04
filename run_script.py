@@ -88,8 +88,12 @@ for sw in sweep_test:
                     # allows speed control
                     system = control.ss(A, B_gust, C, D)
                     x0 = np.transpose([[0, 0, 0, 0]])  # initial condition
-                    # ramps speed linearly with time up to 5 secs
-                    u_ramp = np.append(0.01*t[0][0:5001], 0.01*t[0][5000]*np.ones(len(t[0]) - len(t[0][0:5001])))
+                    # discrete gust model 1-cos input per MIL-F-8785
+                    gust_amp = 0.02
+                    gust_time = 5
+                    gust_input = 0.5 * gust_amp * (1 - np.cos(np.pi * t[0][0:5001] / gust_time))
+                    u_ramp = np.append(gust_input,
+                                       gust_amp*np.ones(len(t[0]) - len(t[0][0:5001])))
                     # solve the system
                     out_force = control.forced_response(system, T=t, X0=x0, U=u_ramp)
                     # save the data
