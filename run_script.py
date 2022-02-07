@@ -19,7 +19,7 @@ S_max = 0.267782  # wings and body reference area - from determine_functions.R
 c_max = 0.2861011  # wing root chord - from determine_functions.R
 
 coef_data = pd.read_csv('/Volumes/GoogleDrive/My Drive/DoctoralThesis/Chapter3_DynamicStability/coefficients'
-                                '/2022_01_24_coefficients_all.csv')
+                                '/2022_02_07_coefficients_all.csv')
 
 dihedral_test = [10, 15, 20]
 sweep_test = [-20, -15, -10, -5, 0, 5, 10]
