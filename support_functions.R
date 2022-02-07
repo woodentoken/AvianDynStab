@@ -46,7 +46,7 @@ plot_timeseries <- function(dat_time1,dat_time2,dat_time3,dat_time4,dat_time5,da
           axis.text.x=element_blank()) +
     # axis control
     scale_x_continuous(limits = c(0,lim_t), name = "Time (s)") + 
-    scale_y_continuous(limits = lim_u, name = "u (m/s)") +
+    scale_y_continuous(limits = lim_u, breaks = c(lim_u[1],0.5*lim_u[1],0,0.5*lim_u[2],lim_u[2]), name = "u (m/s)") +
     geom_rangeframe() +
     annotate(geom = "segment", x = 0, xend = lim_t, y = log(0), yend = log(0)) +
     annotate(geom = "segment", x = log(0), xend = log(0), y = lim_u[1], yend = lim_u[2])
