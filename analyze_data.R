@@ -5,9 +5,53 @@ source("support_functions.R")
 
 # ------------ Read in data ---------------
 # Note that this does not include the wing shapes from the inertial gull
-load("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/2022_01_24_function_data.RData")
+load("/Users/christinaharvey/Google Drive/DoctoralThesis/Chapter3_DynamicStability/2022_02_07_function_data.RData")
 
-dat_out <- read.csv('2022_01_24_LongDynStability_Rigid.csv')
+# Note that the experimental data within dat_exp and the previous study numerical data within dat_num do not have a tail - cannot compare directly to predictions as drag is too low
+##------------------- 
+# allows a comparison against experimental data
+dat_pred <- dat_exp
+dat_pred$elbow_scale = dat_pred$elbow/1000
+dat_pred$manus_scale = dat_pred$manus/1000
+dat_pred$alpha_scale = dat_pred$alpha/10
+dat_pred$sweep = 0
+dat_pred$dihedral = 0
+# predict how our models would fit experimental data
+dat_pred$CL_adj_exp = dat_pred$L_comp
+dat_pred$CL_adj = predict(mod_CL,dat_pred)
+dat_pred$Cm_CG_pred = predict(mod_Cm,dat_pred)
+dat_pred$CD_adj_pred = predict(mod_CD,dat_pred)
+
+dat_pred$xcg = predict(mod_xcg_full,dat_pred) # the origin must be at the shoulder joint!!
+dat_pred$zcg = predict(mod_zcg_full,dat_pred) # the origin must be at the shoulder joint!!
+dat_pred$M_CG = dat_pred$m + ((dat_pred$L*cosd(dat_pred$alpha)+dat_pred$D*sind(dat_pred$alpha))*(-dat_pred$xcg) + 
+                              (dat_pred$L*sind(dat_pred$alpha)-dat_pred$D*cosd(dat_pred$alpha))*(-dat_pred$zcg))
+#needs to be multiplied by half the wing area as the experimental wings were only half and they were scaled 80%
+dat_pred$Cm_CG_exp = dat_pred$M_CG/(0.5*dat_pred$rho*dat_pred$U^2*(0.5*0.8^2*max(dat_num$S_max[which(dat_num$WingID == "17_0285")]))*(0.8*max(dat_num$root_c_max[which(dat_num$WingID == "17_0285")])))
+
+##------------------- 
+# allow comparison against previous numerical data
+dat_num$sweep = 0
+dat_num$dihedral = 0
+dat_num$xcg = predict(mod_xcg_full,dat_num) # the origin must be at the shoulder joint!!
+dat_num$zcg = predict(mod_zcg_full,dat_num) # the origin must be at the shoulder joint!!
+
+dat_num$L_comp = dat_num$CL_adj # make sure that this is the correct lit coefficient to use to predict the drag in the next step
+dat_num$CD_adj_exp = predict(mod_CD,dat_num)
+dat_num$D_adj_exp  = (0.5*1.225*10^2*dat_num$S_max)*dat_num$CD_adj_exp
+dat_num$M_CG = dat_num$Mm + ((dat_num$FL*cosd(dat_num$alpha)+dat_num$D_adj_exp*sind(dat_num$alpha))*(-dat_num$xcg) + 
+                               (dat_num$FL*sind(dat_num$alpha)-dat_num$D_adj_exp*cosd(dat_num$alpha))*(-dat_num$zcg))
+dat_num$CL_adj_num = dat_num$L_comp
+dat_num$CL_adj = predict(mod_CL,dat_num)
+dat_num$Cm_CG_pred = predict(mod_Cm,dat_num)
+
+# include supplemental graph to compare the experimentally predicted drag to the MachUpX drag
+# non-dimensionalize
+dat_num$Cm_CG = dat_num$M_CG/(0.5*1.225*10^2*dat_num$S_max*dat_num$root_c_max)
+dat_wtnum <- subset(dat_num, FrameID == "F1380" | FrameID == "F2195" | FrameID == "F3891" | FrameID == "F4352" | FrameID == "F4546" | FrameID == "F4647" | FrameID == "F4849" | FrameID == "F4911" | FrameID == "F6003")
+
+##------------------- Read in Python Outputs ------------------
+dat_out <- read.csv('2022_02_07_LongDynStability_Rigid.csv')
 S_max = 0.267782   # wings and body reference area from the gull used in inertial study (m^2) - from determine_functions.R
 c_max = 0.2861011  # maximum wing root chord from the gull used in inertial study (m) - from determine_functions.R
 m     = 1.0154     # mass (kg) - from determine_functions.R
@@ -34,6 +78,7 @@ dat_cut$SM = -(dat_cut$Cm_alp/dat_cut$CL_alp)
 dat_cut$NP_xcg = -(dat_cut$Cm_alp/dat_cut$CL_alp)*c_max # this is the center of gravity minus the neutral point (if x-axis points forwards)
 dat_cut$alpha_rad = dat_cut$alpha*pi/180
 dat_cut$theta_rad = dat_cut$alpha_rad + dat_cut$gamma0 # angle from the horizon to the bird reference line
+dat_cut$gamma0_deg = dat_cut$gamma0*180/pi
 dat_cut$theta_0 = dat_cut$theta_rad*180/pi # angle from the horizon to the bird reference line
 dat_cut$cmcl = dat_cut$Cm_alp/dat_cut$CL_alp
 dat_cut$n_a = 0.5*1.225*dat_cut$U0^2*dat_cut$CL_alp/W# load factor per angle of attack
@@ -72,8 +117,8 @@ dat_ph <- subset(dat_cut, dihedral == 20 & sweep < 1 & eignum == 3 & cmcl < 0) #
 
 # Quantify the effect of joint angle on the increasing speed 
 # subest to eignum== 1 to avoid having repeat info
-mod_trim_speed    = lm(U0 ~ elbow + manus + sweep + theta_rad, data = subset(dat_cut, eignum == 1))
-mod_trim_angle    = lm(theta_rad ~ elbow + manus + sweep + U0, data = subset(dat_cut, eignum == 1))
+mod_trim_speed    = lm(U0 ~ elbow*manus*sweep + gamma0_deg, data = subset(dat_cut, eignum == 1))
+mod_trim_angle    = lm(gamma0_deg ~ elbow*manus*sweep + U0, data = subset(dat_cut, eignum == 1))
 
 # limit our discussion to configurations that had many positions converge
 mod_sp_zeta    = lm(zeta ~ elbow*manus*sweep, data = dat_sp)
@@ -103,36 +148,36 @@ Iy_c = 1346*14.5939*0.3048^2 # converting from slug/ft^2
 scale_cap = (10/v_c)*(c_max/c_c)*sqrt((max(dat_inertial$span)/b_c)*(Iy_c/max(dat_inertial$full_Iyy)))
 
 ## ------------------ Time response to an initial alpha -------------------
-dat_time_a_1 <- read.csv('./outputdata/2022_01_16_elbow130_manus106_sw-15_di20_dalp.csv', header = FALSE)
+dat_time_a_1 <- read.csv('./outputdata/2022_02_04_elbow130_manus106_sw-15_di20_dalp.csv', header = FALSE)
 colnames(dat_time_a_1) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_a_2 <- read.csv('./outputdata/2022_01_16_elbow130_manus116_sw-15_di20_dalp.csv', header = FALSE)
+dat_time_a_2 <- read.csv('./outputdata/2022_02_04_elbow130_manus116_sw-15_di20_dalp.csv', header = FALSE)
 colnames(dat_time_a_2) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_a_3 <- read.csv('./outputdata/2022_01_16_elbow130_manus126_sw-15_di20_dalp.csv', header = FALSE)
+dat_time_a_3 <- read.csv('./outputdata/2022_02_04_elbow130_manus126_sw-15_di20_dalp.csv', header = FALSE)
 colnames(dat_time_a_3) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_a_4 <- read.csv('./outputdata/2022_01_16_elbow130_manus136_sw-15_di20_dalp.csv', header = FALSE)
+dat_time_a_4 <- read.csv('./outputdata/2022_02_04_elbow130_manus136_sw-15_di20_dalp.csv', header = FALSE)
 colnames(dat_time_a_4) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_a_5 <- read.csv('./outputdata/2022_01_16_elbow130_manus146_sw-15_di20_dalp.csv', header = FALSE)
+dat_time_a_5 <- read.csv('./outputdata/2022_02_04_elbow130_manus146_sw-15_di20_dalp.csv', header = FALSE)
 colnames(dat_time_a_5) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_a_6 <- read.csv('./outputdata/2022_01_16_elbow130_manus156_sw-15_di20_dalp.csv', header = FALSE)
+dat_time_a_6 <- read.csv('./outputdata/2022_02_04_elbow130_manus156_sw-15_di20_dalp.csv', header = FALSE)
 colnames(dat_time_a_6) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_a_7 <- read.csv('./outputdata/2022_01_16_elbow130_manus166_sw-15_di20_dalp.csv', header = FALSE)
+dat_time_a_7 <- read.csv('./outputdata/2022_02_04_elbow130_manus166_sw-15_di20_dalp.csv', header = FALSE)
 colnames(dat_time_a_7) <- c("t","del_u","del_alp","del_q","del_theta")
 
 ## ------------------ Time response to a ramped speed -------------------
 
-dat_time_r_1 <- read.csv('./outputdata/2022_01_16_elbow130_manus106_sw-15_di20_uramp.csv', header = FALSE)
+dat_time_r_1 <- read.csv('./outputdata/2022_02_04_elbow130_manus106_sw-15_di20_uramp.csv', header = FALSE)
 colnames(dat_time_r_1) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_r_2 <- read.csv('./outputdata/2022_01_16_elbow130_manus116_sw-15_di20_uramp.csv', header = FALSE)
+dat_time_r_2 <- read.csv('./outputdata/2022_02_04_elbow130_manus116_sw-15_di20_uramp.csv', header = FALSE)
 colnames(dat_time_r_2) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_r_3 <- read.csv('./outputdata/2022_01_16_elbow130_manus126_sw-15_di20_uramp.csv', header = FALSE)
+dat_time_r_3 <- read.csv('./outputdata/2022_02_04_elbow130_manus126_sw-15_di20_uramp.csv', header = FALSE)
 colnames(dat_time_r_3) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_r_4 <- read.csv('./outputdata/2022_01_16_elbow130_manus136_sw-15_di20_uramp.csv', header = FALSE)
+dat_time_r_4 <- read.csv('./outputdata/2022_02_04_elbow130_manus136_sw-15_di20_uramp.csv', header = FALSE)
 colnames(dat_time_r_4) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_r_5 <- read.csv('./outputdata/2022_01_16_elbow130_manus146_sw-15_di20_uramp.csv', header = FALSE)
+dat_time_r_5 <- read.csv('./outputdata/2022_02_04_elbow130_manus146_sw-15_di20_uramp.csv', header = FALSE)
 colnames(dat_time_r_5) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_r_6 <- read.csv('./outputdata/2022_01_16_elbow130_manus156_sw-15_di20_uramp.csv', header = FALSE)
+dat_time_r_6 <- read.csv('./outputdata/2022_02_04_elbow130_manus156_sw-15_di20_uramp.csv', header = FALSE)
 colnames(dat_time_r_6) <- c("t","del_u","del_alp","del_q","del_theta")
-dat_time_r_7 <- read.csv('./outputdata/2022_01_16_elbow130_manus166_sw-15_di20_uramp.csv', header = FALSE)
+dat_time_r_7 <- read.csv('./outputdata/2022_02_04_elbow130_manus166_sw-15_di20_uramp.csv', header = FALSE)
 colnames(dat_time_r_7) <- c("t","del_u","del_alp","del_q","del_theta")
 
 
