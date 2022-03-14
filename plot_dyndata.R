@@ -71,22 +71,24 @@ cc_sweep <- c("0" = "#BFBFFF",
 plot_trim <- ggplot() + 
   #add data
   geom_point(data = subset(dat_cut, eignum == 1), 
-             aes(x = U0, y = theta_0, col = manus),  pch = 15) + 
+             aes(x = U0, y = gamma0_deg, col = manus,  pch = as.factor(sign(cmcl)))) + 
   #theme control
   th +
   scale_fill_gradientn(colours = cc_full, name = lab_manus, limits = c(106,178)) + 
   scale_color_gradientn(colours = cc_full, name = lab_manus, limits = c(106,178)) + 
+  scale_shape_manual(values = c(15,0)) +
+  theme(legend.position = 'none') + 
   # axis control 
   scale_x_continuous(limits = c(10,35), breaks = c(10,15,20,25,30), name = "Trim flight speed (m/s)") +
-  scale_y_continuous(limits = c(-53,0), breaks = c(-50,-25,0), name = "Trim pitch angle (°)") +
+  scale_y_continuous(limits = c(-45,0), breaks = c(-45,-30,-15,0), name = "Trim glide angle (°)") +
   geom_rangeframe() +
   annotate(geom = "segment", x = 10, xend = 30, y = log(0), yend = log(0)) +
-  annotate(geom = "segment", x = log(0), xend = log(0), y = -50, yend = 0)
+  annotate(geom = "segment", x = log(0), xend = log(0), y = -45, yend = 0)
 
 # Prep data for the stream plots
 test <- as_tibble(subset(dat_cut, eignum == 1 & dihedral == 20))
 test$U0_r <- round(test$U0, digits = 0)
-test$theta_0_r <- round(test$theta_0, digits = 0)
+test$gamma0_r <- round(test$gamma0_deg, digits = 0)
 
 dat_U0_plot <- test %>%
   group_by(U0_r, sweep, .drop=FALSE) %>%
@@ -94,11 +96,11 @@ dat_U0_plot <- test %>%
 dat_U0_plot$sweep <- as.factor(dat_U0_plot$sweep)
 dat_U0_plot$count_man <- as.double(dat_U0_plot$count_man)
 
-dat_t0_plot <- test %>%
-  group_by(theta_0_r, sweep, .drop=FALSE) %>%
+dat_g0_plot <- test %>%
+  group_by(gamma0_r, sweep, .drop=FALSE) %>%
   summarise(count_man=length(unique(manus,elbow)))
-dat_t0_plot$sweep <- as.factor(dat_t0_plot$sweep)
-dat_t0_plot$count_man <- as.double(dat_t0_plot$count_man)
+dat_g0_plot$sweep <- as.factor(dat_g0_plot$sweep)
+dat_g0_plot$count_man <- as.double(dat_g0_plot$count_man)
 
 # ------ Speed stream -----
 plot_U0_stream <- ggplot()+
@@ -107,27 +109,29 @@ plot_U0_stream <- ggplot()+
   scale_fill_manual(values = cc_sweep, name = lab_manus, labels = c(100,160,140,140,140)) + # fake labels to make it the same width as the above - will just delete and use the accurate ones from the below plot
   #theme
   th +
+  theme(legend.position = 'none') + 
   # axis control 
   scale_x_continuous(limits = c(10,35), breaks = c(10,15,20,25,30), name = "Trim flight speed (m/s)") +
-  scale_y_continuous(limits = c(-100,100), breaks = c(-30,-15,0,15,30), name = "Number of trimmed configurations") +
+  scale_y_continuous(limits = c(-100,100), breaks = c(-30,-15,0,15,30), labels = c("0","","30","","-60"), name = "Number of trimmed configurations") +
   geom_rangeframe() +
   annotate(geom = "segment", x = 10, xend = 30, y = log(0), yend = log(0)) +
   annotate(geom = "segment", x = log(0), xend = log(0), y = -30, yend = 30)
 
 # ------ Pitch angle stream -----
-plot_t0_stream <- ggplot()+
+plot_g0_stream <- ggplot()+
   # add data
-  geom_stream(data = dat_t0_plot, aes(theta_0_r, count_man,fill = sweep)) + 
+  geom_stream(data = dat_g0_plot, aes(gamma0_r, count_man,fill = sweep)) + 
   #colour control 
   scale_fill_manual(values = cc_sweep, name = lab_sweep) + 
   #theme
   th +
+  theme(legend.position = 'none') + 
   # axis control 
   coord_flip()+
-  scale_x_continuous(limits = c(-53,0), breaks = c(-50,-25,0), name = "Trim pitch angle (°)") +
-  scale_y_continuous(limits = c(-100,100), breaks = c(-30,-15,0,15,30), name = "Number of trimmed configurations") +
+  scale_x_continuous(limits = c(-45,0), breaks = c(-45,-30,-15,0), name = "Trim glide angle (°)") +
+  scale_y_continuous(limits = c(-100,100), breaks = c(-30,-15,0,15,30), labels = c("0","","30","","60"), name = "Number of trimmed configurations") +
   geom_rangeframe() +
-  annotate(geom = "segment", x = 0, xend = -50, y = log(0), yend = log(0)) +
+  annotate(geom = "segment", x = 0, xend = -45, y = log(0), yend = log(0)) +
   annotate(geom = "segment", x = log(0), xend = log(0), y = -30, yend = 30)
 
 plot_x <- ggplot() + 
@@ -140,6 +144,7 @@ plot_x <- ggplot() +
   th +
   scale_color_gradientn(colours = cc_full, name = lab_manus, limits = c(106,178)) +
   scale_shape_manual(values = c(15,0)) +
+  theme(legend.position = 'none') + 
   # axis control 
   scale_x_continuous(limits = c(-0.0035,0.1), breaks = seq(0,0.1,0.02), name = "-x (m)") +
   scale_y_continuous(limits = c(80,150), breaks = seq(80,150,10), name = lab_elbow) +
@@ -161,6 +166,7 @@ plot_em <- ggplot() +
   scale_fill_manual(values = cc_sweep, name = lab_sweep) + 
   scale_colour_manual(values = cc_sweep, name = lab_sweep) + 
   scale_shape_manual(values = c(15,0)) +
+  theme(legend.position = 'none') + 
   # axis control 
   scale_x_continuous(limits = c(80,180), breaks = seq(80,170,10), name = lab_elbow) +
   scale_y_continuous(limits = c(100,180), breaks = seq(100,180,10), name = lab_manus) +
@@ -169,11 +175,11 @@ plot_em <- ggplot() +
   annotate(geom = "segment", x = log(0), xend = log(0), y = 100, yend = 180)
 
 
-plot_topleft <- plot_grid(plot_trim,plot_t0_stream,
+plot_topleft <- plot_grid(plot_trim,plot_g0_stream,
                      #arrangement data
                      align = "h",
                      ncol = 2,
-                     rel_widths = c(1,0.6),
+                     rel_widths = c(1,0.7),
                      #labels
                      labels = c("A","B"),
                      label_size = 10,
@@ -181,7 +187,7 @@ plot_topleft <- plot_grid(plot_trim,plot_t0_stream,
 plot_botleft <- plot_grid(plot_U0_stream,blank_plot,
                           #arrangement data
                           ncol = 2,
-                          rel_widths = c(1,0.6),
+                          rel_widths = c(1,0.7),
                           #labels
                           labels = c("C",""),
                           label_size = 10,
@@ -190,7 +196,7 @@ plot_left <- plot_grid(plot_topleft,plot_botleft,
                           #arrangement data
                           align = "v",
                           nrow = 2,
-                          rel_heights = c(1,0.6),
+                          rel_heights = c(1,0.7),
                           #labels
                           labels = c("",""),
                           label_size = 10,
@@ -199,12 +205,12 @@ plot_right <- plot_grid(plot_x,plot_em, blank_plot,blank_plot,
                        #arrangement data
                        nrow = 2,
                        rel_widths = c(0.8,1),
-                       rel_heights = c(1,0.6),
+                       rel_heights = c(1,0.7),
                        #labels
                        labels = c("D",""),
                        label_size = 10,
                        label_fontfamily = "sans")
-# exported as 5x18
+# exported as 5x10
 fig2_full <- plot_grid(plot_left,plot_right,
                        #arrangement data
                        ncol = 2,
@@ -396,14 +402,14 @@ fig3_full <- plot_grid(locus_sp, locus_ph, plot_sp_o,plot_ph_o,plot_sp_z,plot_ph
 
 # exported as 5x5.5
 plot_levels <- ggplot() + 
-  geom_vline(xintercept = 0.2, linetype = 1, alpha = 0.3) +   # MIL-F-8785C Level 1 Lower Bound - Category B
-  geom_vline(xintercept = 0.3, linetype = 1, alpha = 0.3) +   # MIL-F-8785C Level 1 Lower Bound - Category B
-  geom_hline(yintercept = 3.6, linetype = 1, alpha = 0.3) +   # MIL-F-8785C Level 1 Upper Bound - Category B
-  geom_hline(yintercept = 0.085, linetype = 1, alpha = 0.3) + # MIL-F-8785C Level 1 Lower Bound - Category B
-  geom_hline(yintercept = scale_fos*3.6, linetype = 2) +   # Foster's scaling Level 1 Upper Bound - Category B
-  geom_hline(yintercept = scale_fos*0.085, linetype = 2) + # Foster's scaling Level 1 Lower Bound - Category B
-  geom_hline(yintercept = scale_cap*3.6, linetype = 3, alpha = 0.6) +   # Capello's scaling Level 1 Upper Bound - Category B
-  geom_hline(yintercept = scale_cap*0.085, linetype = 3, alpha = 0.6) + #Capello's scaling Level 1 Lower Bound - Category B
+  geom_vline(xintercept = 0.2, linetype = 1, alpha = 0.3) +   # MIL-F-8785C Level 1 Damping Lower Bound - Category B
+  geom_vline(xintercept = 0.3, linetype = 1, alpha = 0.3) +   # MIL-F-8785C Level 2 Damping Lower Bound - Category B
+  geom_hline(yintercept = 3.6, linetype = 1, alpha = 0.3) +   # MIL-F-8785C Level 1 Frequency Upper Bound - Category B
+  geom_hline(yintercept = 10, linetype = 1, alpha = 0.3) +    # MIL-F-8785C Level 2 Frequency Upper Bound - Category B
+  geom_hline(yintercept = scale_fos*3.6, linetype = 2) +      # Foster's scaling Level 1 Frequency Upper Bound - Category B
+  geom_hline(yintercept = scale_fos*10, linetype = 2) +       # Foster's scaling Level 2 Frequency Upper Bound - Category B
+  geom_hline(yintercept = scale_cap*3.6, linetype = 3, alpha = 0.6) +   # Capello's scaling Level 1 Frequency Upper Bound - Category B
+  geom_hline(yintercept = scale_cap*10, linetype = 3, alpha = 0.6) +    # Capello's scaling Level 2 Frequency Upper Bound - Category B
   #geom_rect(aes(ymax = 3.6, ymin = 0.085, xmin = 0.3, xmax = 1), alpha = 0.3) + 
   #geom_rect(aes(ymax = 10, ymin = 0.038, xmin = 0.2, xmax = 1), alpha = 0.15) + 
   #geom_rect(aes(ymax = Inf, ymin = 0.038, xmin = 0.15, xmax = 1), alpha = 0.15) + 
@@ -416,10 +422,10 @@ plot_levels <- ggplot() +
   scale_color_gradientn(colours = cc_full, limits = c(106,178)) + 
   # axis control 
   scale_x_continuous(limits = c(0,1), breaks = seq(0,1,0.25), name = expression(paste("Damping ratio, ", zeta))) +
-  scale_y_continuous(trans = "log10",limits = c(0.01,100), name = expression(paste(omega["n"]^2,"/n"[alpha]))) +
+  scale_y_continuous(trans = "log10",limits = c(1,100), name = expression(paste(omega["n"]^2,"/n"[alpha]))) +
   geom_rangeframe() +
   annotate(geom = "segment", x = 0, xend = 1, y = 0, yend = 0) +
-  annotate(geom = "segment", x = log(0), xend = log(0), y = 0.01, yend = 100) 
+  annotate(geom = "segment", x = log(0), xend = log(0), y = 1, yend = 100) 
 
 ## ------------- Plot the phase and magnitude -------------------
   
@@ -488,52 +494,13 @@ plot_ph_magphase <- ggplot() +
   scale_y_continuous(limits = c(0,360), breaks = c(0,90,180,270), name = lab_phase)
 
 
-supp_fig_full <- plot_grid(plot_sp_magphase,plot_ph_magphase,
+fig5_full <- plot_grid(plot_sp_magphase,plot_ph_magphase,
                        #arrangement data
                        ncol = 2,
                        #labels
                        labels = c("A","B"),
                        label_size = 10,
                        label_fontfamily = "sans")
-
-## ------------------- Phase with respect to elbow and wrist angle ------------
-plot_ph_phase <- ggplot() + 
-  geom_raster(data = subset(dat_ph, sweep == -15), 
-              aes(x = elbow, y = manus, alpha = round(phase4,1)*180/pi), fill = col_theta) + 
-  # theme control
-  th +
-  scale_alpha_continuous(name = lab_phase) +
-  # axis control 
-  coord_fixed() + 
-  scale_x_continuous(limits = c(85,156), breaks = c(90,120,150), name = lab_elbow) +
-  scale_y_continuous(limits = c(100,161), breaks = c(100,130,160), name = lab_manus) +
-  geom_rangeframe() +
-  annotate(geom = "segment", x = 90, xend = 150, y = log(0), yend = log(0)) +
-  annotate(geom = "segment", x = log(0), xend = log(0), y = 100, yend = 160) 
-
-plot_sp_phase <- ggplot() + 
-  geom_raster(data = subset(dat_sp, sweep == -15), 
-              aes(x = elbow, y = manus, alpha = round(phase4,1)*180/pi), fill = col_theta) + 
-  # theme control
-  th +  scale_alpha_continuous(name = lab_phase) +
-  # axis control 
-  coord_fixed() + 
-  scale_x_continuous(limits = c(85,156), breaks = c(90,120,150), name = lab_elbow) +
-  scale_y_continuous(limits = c(100,161), breaks = c(100,130,160), name = lab_manus) +
-  geom_rangeframe() +
-  annotate(geom = "segment", x = 90, xend = 150, y = log(0), yend = log(0)) +
-  annotate(geom = "segment", x = log(0), xend = log(0), y = 100, yend = 160) 
-
-
-fig4_full <- plot_grid(plot_sp_magphase,plot_ph_magphase,
-          plot_sp_phase,plot_ph_phase,
-          #arrangement data
-          ncol = 2,
-          #labels
-          labels = c("A","B", "C","D"),
-          label_size = 10,
-          label_fontfamily = "sans")
-
 
 plot_mancol <- ggplot() +
   geom_point(data = dat_cut, aes(x = elbow, y = manus, col = manus)) +
@@ -554,43 +521,54 @@ lim_q     = c(-50,50)
 break_q = seq(-50,50, by = 25)
 lim_theta = c(-2.5,2.5)
 break_theta = seq(-2.5,2.5,by=1.25)
-lim_time = 10
-plot_dalp <- plot_timeseries(dat_time_a_1[1:which(dat_time_1$t==lim_time),],
-                             dat_time_a_2[1:which(dat_time_2$t==lim_time),],
-                             dat_time_a_3[1:which(dat_time_3$t==lim_time),],
-                             dat_time_a_4[1:which(dat_time_4$t==lim_time),],
-                             dat_time_a_5[1:which(dat_time_5$t==lim_time),],
-                             dat_time_a_6[1:which(dat_time_6$t==lim_time),],
-                             dat_time_a_7[1:which(dat_time_6$t==lim_time),],
+lim_time = 20
+plot_dalp <- plot_timeseries(dat_time_a_1[1:which(dat_time_a_1$t==lim_time),],
+                             dat_time_a_2[1:which(dat_time_a_2$t==lim_time),],
+                             dat_time_a_3[1:which(dat_time_a_3$t==lim_time),],
+                             dat_time_a_4[1:which(dat_time_a_4$t==lim_time),],
+                             dat_time_a_5[1:which(dat_time_a_5$t==lim_time),],
+                             dat_time_a_6[1:which(dat_time_a_6$t==lim_time),],
+                             dat_time_a_7[1:which(dat_time_a_7$t==lim_time),],
                              cc_setman,
                              lim_u,lim_alpha,lim_q,lim_theta, 
                              break_q, break_theta, lim_time)
 
 ## ------------------ Time response to a ramped speed -------------------
 
-lim_u     = c(-0.06,0.02)
+lim_u     = c(-0.03,0.03)
 lim_alpha = c(-0.1,0.1)
 lim_q     = c(-1,1)
 break_q   = seq(-1,1, by= 0.5)
 lim_theta = c(-2.5,2.5)
 break_theta = seq(-2.5,2.5, by= 1.25)
 lim_time = 20
-plot_uramp <- plot_timeseries(dat_time_r_1[1:which(dat_time_7$t==lim_time),],
-                              dat_time_r_2[1:which(dat_time_8$t==lim_time),],
-                              dat_time_r_3[1:which(dat_time_9$t==lim_time),],
-                              dat_time_r_4[1:which(dat_time_10$t==lim_time),],
-                              dat_time_r_5[1:which(dat_time_11$t==lim_time),],
-                              dat_time_r_6[1:which(dat_time_12$t==lim_time),],
-                              dat_time_r_7[1:which(dat_time_12$t==lim_time),],
+plot_uramp <- plot_timeseries(dat_time_r_1[1:which(dat_time_r_1$t==lim_time),],
+                              dat_time_r_2[1:which(dat_time_r_2$t==lim_time),],
+                              dat_time_r_3[1:which(dat_time_r_3$t==lim_time),],
+                              dat_time_r_4[1:which(dat_time_r_4$t==lim_time),],
+                              dat_time_r_5[1:which(dat_time_r_5$t==lim_time),],
+                              dat_time_r_6[1:which(dat_time_r_6$t==lim_time),],
+                              dat_time_r_7[1:which(dat_time_r_7$t==lim_time),],
                               cc_setman,
                               lim_u,lim_alpha,lim_q,lim_theta, 
                               break_q, break_theta, lim_time)
 # exported as 8 x7 
-fig5_full <- plot_grid(plot_dalp,plot_uramp,
+fig6_full <- plot_grid(plot_dalp,plot_uramp,
                        #arrangement data
                        ncol = 2,
                        #labels
                        labels = c("A","B"),
                        label_size = 10,
                        label_fontfamily = "sans")
+
+
+plot_CLpredexp <- ggplot() +
+  geom_point(data = subset(dat_exp, alpha < 5 & alpha >= -10), aes(x = L_comp, y = CD_true)) +
+  geom_point(data = subset(dat_wtnum, alpha < 5 & alpha >= -10), aes(x = CL_adj, y = CD_adj_exp), col = "blue") +
+  geom_point(data = subset(dat_pred, alpha < 5 & alpha >= -10), aes(x = CL_adj, y = CD_true), col = "red")
+  
+plot_CLpredexp <- ggplot() +
+  geom_point(data = subset(dat_pred, alpha < 5 & alpha >= -10), aes(x = L_comp, y = Cm_CG_exp)) +
+  geom_point(data = subset(dat_wtnum, alpha < 5 & alpha >= -10), aes(x = CL_adj, y = Cm_CG), col = "blue") +
+  geom_point(data = subset(dat_pred, alpha < 5 & alpha >= -10), aes(x = CL_adj, y = Cm_CG_pred), col = "red")
 

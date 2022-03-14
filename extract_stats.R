@@ -1,5 +1,5 @@
 # number of tested configs
-40*37*3*7
+40*37*3*9
 
 ## ---------- Methods - Trim states ---------
 # number of trimmed configurations
@@ -115,9 +115,10 @@ for(i in 1:40){
   }
 }
 ## -----------------------------------------------------------------------------
-length(which(dat_manus_effect_sp$u < 0)) / nrow(dat_manus_effect_sp)
-length(which(dat_elbow_effect$u < 0)) / nrow(dat_elbow_effect)
-length(which(dat_sweep_effect$u < 0)) / nrow(dat_sweep_effect)
+length(which(dat_manus_effect_sp$u < 0)) / nrow(dat_manus_effect_sp) # percentage of folding the wrist increasing speed (i.e. negative)
+length(which(dat_elbow_effect$u < 0)) / nrow(dat_elbow_effect) # percentage of folding the elbow increasing speed (i.e. negative)
+length(which(dat_sweep_effect$u < 0)) / nrow(dat_sweep_effect) # percentage of sweeping wings forwards increasing speed (i.e. negative)
+length(which(dat_sweep_effect$g < 0)) / nrow(dat_sweep_effect) # percentage of sweeping wings forwards decreasing speed (i.e. positive)
 
 ## ------------------- Static stability about the trim state ----------------------------
 
