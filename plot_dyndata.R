@@ -321,7 +321,7 @@ plot_sp_o <- ggplot() +
   scale_color_gradientn(colours = cc_full, name = lab_manus, limits = c(106,178)) + 
   # axis control 
   scale_x_continuous(limits = c(80,170), breaks = seq(80,160,20), name = lab_elbow) +
-  scale_y_continuous(limits = c(0,41), name = "Nautral frequency,    (rad/s)") +
+  scale_y_continuous(limits = c(0,41), name = "Natural frequency,    (rad/s)") +
   geom_rangeframe() +
   annotate(geom = "segment", x = 80, xend = 160, y = log(0), yend = log(0)) +
   annotate(geom = "segment", x = log(0), xend = log(0), y = 0, yend = 40) + 
@@ -365,7 +365,7 @@ plot_ph_o <- ggplot() +
   scale_color_gradientn(colours = cc_full, limits = c(106,178)) + 
   # axis control 
   scale_x_continuous(limits = c(80,170), breaks = seq(80,160,20), name = lab_elbow) +
-  scale_y_continuous(limits = c(0,2), name = "Nautral frequency,    (rad/s)") +
+  scale_y_continuous(limits = c(0,2), name = "Natural frequency,    (rad/s)") +
   geom_rangeframe() +
   annotate(geom = "segment", x = 80, xend = 160, y = log(0), yend = log(0)) +
   annotate(geom = "segment", x = log(0), xend = log(0), y = 0, yend = 2)
