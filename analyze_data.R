@@ -49,6 +49,8 @@ dat_num$Cm_CG_pred = predict(mod_Cm,dat_num)
 # non-dimensionalize
 dat_num$Cm_CG = dat_num$M_CG/(0.5*1.225*10^2*dat_num$S_max*dat_num$root_c_max)
 dat_wtnum <- subset(dat_num, FrameID == "F1380" | FrameID == "F2195" | FrameID == "F3891" | FrameID == "F4352" | FrameID == "F4546" | FrameID == "F4647" | FrameID == "F4849" | FrameID == "F4911" | FrameID == "F6003")
+dat_wtnum$xcg <- predict(mod_xcg_full,dat_wtnum)
+dat_wtnum$zcg <- predict(mod_zcg_full,dat_wtnum)
 
 ##------------------- Read in Python Outputs ------------------
 dat_out <- read.csv('2022_02_07_LongDynStability_Rigid.csv')
@@ -64,6 +66,13 @@ tmp     <- cut_trueshape(dat_out,unique(dat_all[4:5]),4,5) # cut elbow and wrist
 dat_cut <- tmp$dat_cut
 # restrict to angles of attack with valid aerodynamic data
 dat_cut <- subset(dat_cut, alpha < 5)
+# Save data for stitched model - only want one row of each state so save first
+dat_stitch <- subset(dat_cut, eignum == 1)
+dat_stitch$xcg <- predict(mod_xcg_full,dat_stitch)
+dat_stitch$zcg <- predict(mod_zcg_full,dat_stitch)
+
+filename = paste(format(Sys.Date(), "%Y_%m_%d"),"_trimstates.csv",sep="")
+write.csv(dat_stitch,filename)
 # Limit so that the wind direction isn't more than 45deg relative to the horizontal
 dat_cut <- subset(dat_cut, gamma0 > -45*pi/180)
 # limit the data to only discuss configurations at a single dihedral angle
