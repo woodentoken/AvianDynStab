@@ -189,15 +189,34 @@ mean(dat_ph$zeta)
 #explain 156deg
 unique(subset(dat_out, elbow == 130 & sweep == -15 & manus ==156 & dihedral == 20)$gamma0)*180/(pi)
 
-# time to halve
-subset(dat_ph, elbow == 130 & sweep == -15 & manus %in% c(106,116,126,136,146))$halft
+# ------ Time to halve (stable response) -------------
 subset(dat_sp, elbow == 130 & sweep == -15 & manus %in% c(106,116,126,136,146))$halft
+subset(dat_ph, elbow == 130 & sweep == -15 & manus %in% c(106,116,126,136,146))$halft
 
-#time to double
+# Convective time - note these are the same as it is the same speed
+c_max/subset(dat_sp, elbow == 130 & sweep == -15 & manus %in% c(106,116,126,136,146))$U0
+c_max/subset(dat_ph, elbow == 130 & sweep == -15 & manus %in% c(106,116,126,136,146))$U0
+
+#% of time
+subset(dat_sp, elbow == 130 & sweep == -15 & manus %in% c(106,116,126,136,146))$halft/(c_max/subset(dat_sp, elbow == 130 & sweep == -15 & manus %in% c(106,116,126,136,146))$U0)
+subset(dat_ph, elbow == 130 & sweep == -15 & manus %in% c(106,116,126,136,146))$halft/(c_max/subset(dat_ph, elbow == 130 & sweep == -15 & manus %in% c(106,116,126,136,146))$U0)
+
+# ------ Time to double (unstable response) -------------
 dat_out$halft  = 0.69/abs(dat_out$eig_real) # captures the rate of decay
 subset(dat_out, eignum == 1 & elbow == 130 & sweep == -15 & dihedral == 20 & manus %in% c(156,166))$halft
 subset(dat_out, eignum == 3 & elbow == 130 & sweep == -15 & dihedral == 20 & manus %in% c(156,166))$halft
 
+# Convective time - note these are the same as it is the same speed
+c_max/subset(dat_out, eignum == 1 & elbow == 130 & sweep == -15 & dihedral == 20 & manus %in% c(156,166))$U0
+c_max/subset(dat_out, eignum == 3 & elbow == 130 & sweep == -15 & dihedral == 20 & manus %in% c(156,166))$U0
+
+#% of time
+subset(dat_out, eignum == 1 & elbow == 130 & sweep == -15 & dihedral == 20 & manus %in% c(156,166))$halft/(c_max/subset(dat_out, eignum == 1 & elbow == 130 & sweep == -15 & dihedral == 20 & manus %in% c(156,166))$U0)
+subset(dat_out, eignum == 3 & elbow == 130 & sweep == -15 & dihedral == 20 & manus %in% c(156,166))$halft/(c_max/subset(dat_out, eignum == 3 & elbow == 130 & sweep == -15 & dihedral == 20 & manus %in% c(156,166))$U0)
+
+# Maximum and minimum onvective time - note these are the same as for the phugoid mode it is the same speed
+min(c(c_max/subset(dat_sp, elbow == 130 & sweep == -15 & manus %in% c(106,116,126,136,146))$U0, c_max/subset(dat_out, eignum == 1 & elbow == 130 & sweep == -15 & dihedral == 20 & manus %in% c(156,166))$U0 ))
+max(c(c_max/subset(dat_sp, elbow == 130 & sweep == -15 & manus %in% c(106,116,126,136,146))$U0, c_max/subset(dat_out, eignum == 1 & elbow == 130 & sweep == -15 & dihedral == 20 & manus %in% c(156,166))$U0 ))
 
 # Sanity check that the lift and drag parameters are appropriate
 plot(dat_exp$L_comp,dat_exp$CD_true)
